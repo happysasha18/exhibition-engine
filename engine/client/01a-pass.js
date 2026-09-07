@@ -3277,21 +3277,35 @@
       });
     });
     const supportsOf = (field) => (fieldSupports[field] !== undefined ? fieldSupports[field] : null);
-    // AND THE HANDLES THAT CHOICE ACTUALLY MOVED (S-115, his word: «какой выбор и handle поддержало
+    // AND THE HANDLE THAT CHOICE ACTUALLY MOVED (S-115, his word: «какой выбор и handle поддержало
     // каждое measurement»). `supports` above names the CHOICE — the road the reading backed — and
-    // stops there, so a reading that put parquet on the frame could not be followed to the lattice,
-    // period or phase it moved. The composer publishes no per-handle note (`sayVoice` writes numbers
-    // into the handle map and says nothing on the note channel `say()` writes), so the link is made
-    // where it is real and no further: a reading backed a road, that road cast these cues, and these
-    // are the handles those cues actually DRIVE — a handle with a `tracks` entry is one the score
-    // moves across the passage, as against a door it merely holds. A reading that backed a road the
-    // race did not take moved nothing, and gets an empty list rather than the played road's handles.
-    const drivenHandles = scoreCues.reduce((acc, c) => {
-      Object.keys((c && c.tracks) || {}).forEach((h) => acc.push(String(c.id) + "." + h));
-      return acc;
-    }, []);
-    const movedBySupport = (field) => (supportsOf(field) !== null && supportsOf(field) === chosenRoad)
-      ? drivenHandles.slice() : [];
+    // used to stop there: every measurement that backed the winning road was handed the WHOLE played
+    // score's handle list, the identical list for each, which reads as attribution and is not one —
+    // a reading of "banding" and a reading of "grid" pointed at the same handles for no reason but
+    // that both happened to back the road that won. Now that the composer publishes
+    // `diagnostics.drove` (carried onto this record above as `drove`) — one row per played cue
+    // naming each handle it actually asked a value of, and the register's own sentence (`reads`)
+    // that names the measurement that handle is read from — the link is made on that sentence
+    // instead: a handle is named for a measurement when its own `reads` sentence mentions that
+    // measurement's field (matched on the field's last path segment — "banding", "grid",
+    // "materialVotes" and so on — case-insensitively, since that is the word `HANDLE_SOURCE` itself
+    // writes). This is still not an attribution of WHY the composer chose the value the handle
+    // carries, only of WHICH handle's own documented source names this measurement; a handle whose
+    // `reads` sentence never mentions the field stays out, whether or not its cue's road is the one
+    // the reading backed.
+    const drove = row && row.diagnostics ? (row.diagnostics.drove || []) : [];
+    const movedHandlesFor = (field) => {
+      const seg = String(field).split(".").pop().toLowerCase();
+      const named = [];
+      drove.forEach((c) => {
+        (c.handles || []).forEach((h) => {
+          if (h && typeof h.reads === "string" && h.reads.toLowerCase().indexOf(seg) >= 0) {
+            named.push(String(c.cue) + "." + h.handle);
+          }
+        });
+      });
+      return named;
+    };
     const worksAll = (typeof passWorkRecords === "function") ? (passWorkRecords() || {}) : {};
     const fromWork = worksAll[fromId] || null, toWork = worksAll[toId] || null;
     const measurementsRead = [];
@@ -3301,7 +3315,7 @@
         .forEach((m) => measurementsRead.push({
           field: "measures." + m, from: numOf((fromWork.measures || {})[m]),
           to: numOf((toWork.measures || {})[m]), supports: supportsOf("measures." + m),
-          movedHandles: movedBySupport("measures." + m) }));
+          movedHandles: movedHandlesFor("measures." + m) }));
       // `colour.*` stays null: no `say()` site in `pass-composer.js` names a colour field in its
       // `why` today (`fillPlan`'s own colour voicing is a different note channel, `sayVoice`, not
       // this one) — an honest empty, not an oversight.
@@ -3312,7 +3326,7 @@
                               from: numOf((fromWork.matter || {}).materialVotes),
                               to: numOf((toWork.matter || {}).materialVotes),
                               supports: supportsOf("matter.materialVotes"),
-                              movedHandles: movedBySupport("matter.materialVotes") });
+                              movedHandles: movedHandlesFor("matter.materialVotes") });
     }
     // THE HOST'S OWN HANDLE FALLBACKS, PAIRED WITH THE CUES THAT COULD HAVE RAISED THEM (S-115).
     // `pass-layer.js` writes one row per handle it could not evaluate — `logEvt("handle-fallback",
@@ -3376,10 +3390,19 @@
       cadence: rep ? rep.cadence : null,
       landedInMs: (rep && rep.cadence) ? rep.cadence.landedInMs : null,
       durationMs: Math.round(passCrossingMsOf(cmd)),
-      movedBy: row && row.diagnostics ? (row.diagnostics.movedBy || null) : null,
       // A synthetic command can have no composer row at all (the diagnostic dock's own empty
       // state). That has no bundles rather than an invented one; a real row carries its ledger.
       bundles: row && row.diagnostics ? (row.diagnostics.bundles || null) : [],
+      // WHAT ACTUALLY DROVE, PER PLAYED CUE (S-115, work order item 5) — the composer's own
+      // `diagnostics.drove`, carried as received: one row per played cue naming each handle the fill
+      // actually asked a value of, the level it drives, what was asked and what the handle's own
+      // published range let through, and the register's own sentence naming the measurement that
+      // handle is read from. `measurementsRead[].movedHandles` above is built off this same array.
+      drove: drove,
+      // VOICES SEATED AND THEN DROPPED (S-115, work order item 5) — the composer's own
+      // `diagnostics.silenced`, carried as received: which levels were lost and why, and for the
+      // occlusion drop which instrument hid the voice.
+      silenced: row && row.diagnostics ? (row.diagnostics.silenced || []) : [],
       // DID THE CAMERA LEAD THIS STEP, ITS OWN TRACK WHOLE, AND ITS POSE AT START/MIDDLE/END.
       cameraLed: cameraLed,
       cameraTrack: cameraTrack,

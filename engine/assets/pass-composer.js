@@ -4273,6 +4273,20 @@
       return spec && spec.level ? spec.level : null;
     }
 
+    // WHAT SHARE OF THE FRAME A VOICE STANDS ON WHEN ITS OWN PRESENCE IS WHOLE, read off the handle
+    // that carries presence. THE VOCABULARY IS NOT NEW: `overlay` has published
+    // `presence.applied.shareStandingAtWhole` since its own manifest was written, and it already
+    // reaches this file on the wire. What was missing is that the two instruments whose shaders make
+    // the same claim in prose never made it in a field, so nothing between them and the composer
+    // could read it. An instrument that publishes no share has none claimed for it.
+    function shareAtWhole(iid) {
+      var m = iid && MANIFESTS[iid];
+      var p = m && m.handles ? m.handles.presence : null;
+      var s = p && p.applied ? p.applied.shareStandingAtWhole : null;
+      return typeof s === "number" ? s : null;
+    }
+    function coversTheFrameAtWhole(iid) { return shareAtWhole(iid) === 1; }
+
     // WHETHER THIS CUE MAY DRIVE THIS HANDLE, by shelf 17's levels law. A handle with no level of
     // its own is always driven; one that drives a level is driven only by the cue that owns that
     // level. `levelOwnership` is `ownTheLevels`'s own record, settled once per plan.
@@ -4290,6 +4304,93 @@
         out[hs[i]] = tracks[hs[i]];
       }
       return out;
+    }
+
+    // EVERY VALUE A COMPOSED NODE CAN STAND AT ACROSS THE PASSAGE, and whether the passage itself
+    // drives it. This is the arithmetic that answers «does this handle ever leave its own published
+    // default», and it reads the node shapes this same file writes a few screens below: a static
+    // stands at one value; a mix runs between its two ends; a spline visits its points; a map lands
+    // on its `to` pair; a clamp, a curve and an add are the same question one node deeper; a node
+    // standing on a `source` is driven by the passage and therefore travels whatever it carries.
+    //
+    // A `{node: name}` reference is followed through `bag`, because the shared course node and the
+    // pointer nudge's own base both reach a handle only by name, and a reader that stopped at the
+    // reference would call a travelling handle still.
+    function handleReach(node, bag, out, depth) {
+      out = out || { vals: [], travels: false };
+      if (!node || typeof node !== "object" || (depth || 0) > 32) return out;
+      if (node.node && bag) return handleReach(bag[node.node], bag, out, (depth || 0) + 1);
+      if (node.source) { out.travels = true; return out; }
+      if (node.op === "static") { out.vals.push(Number(num(node.value))); return out; }
+      if (node.op === "mix") {
+        out.vals.push(Number(num(node.a)), Number(num(node.b)));
+        return handleReach(node.t, bag, out, (depth || 0) + 1);
+      }
+      if (node.op === "spline") {
+        (node.points || []).forEach(function (p) { out.vals.push(Number(num(p.value))); });
+        return handleReach(node["in"], bag, out, (depth || 0) + 1);
+      }
+      if (node.op === "map") {
+        (node.to || []).forEach(function (v) { out.vals.push(Number(num(v))); });
+        return handleReach(node["in"], bag, out, (depth || 0) + 1);
+      }
+      if (node["in"]) {
+        if (Object.prototype.toString.call(node["in"]) === "[object Array]") {
+          node["in"].forEach(function (k) { handleReach(k, bag, out, (depth || 0) + 1); });
+          return out;
+        }
+        return handleReach(node["in"], bag, out, (depth || 0) + 1);
+      }
+      if ("value" in node) { out.vals.push(Number(num(node.value))); return out; }
+      return out;
+    }
+
+    // WHETHER A CUE SAYS ANYTHING AT ALL ON THE LEVELS IT OWNS. True when every levelled handle it
+    // still holds stands at that handle's own published default for the whole passage — no travel,
+    // no second value, nothing a person could see it do. `handleReach` above supplies the arithmetic
+    // and the manifest supplies the default, so nothing here is a threshold: the comparison is
+    // against the instrument's own published neutral and against no number this file chose.
+    function saysNothing(c) {
+      var iid = c.instrument.id, spoke = false, levelled = false;
+      Object.keys(c.tracks || {}).forEach(function (h) {
+        if (!levelOf(iid, h)) return;
+        levelled = true;
+        var spec = (HANDLE_SPECS[iid] || {})[h];
+        if (!spec) return;
+        var def = Number(num(spec[2]));
+        var r = handleReach((c.nodes || {})[(c.tracks[h] || {}).node], c.nodes);
+        if (r.travels) { spoke = true; return; }
+        if (r.vals.some(function (v) { return v === v && v !== def; })) spoke = true;
+      });
+      return levelled && !spoke;
+    }
+
+    // THE READING THAT MOVED EACH HANDLE, PER PLAYED CUE. One row per handle the fill actually asked
+    // a value of, carrying the level it drives, what was asked, what the handle's own published range
+    // let through, and the register's own sentence for that handle — which is where the measurement
+    // behind it has always been named. Nothing is derived a second time: `measuredHandles` is the
+    // fill's own record of what it asked, and `sourceOf` is the register row `tracksFor` already
+    // consults before it will build a track at all.
+    function droveLedger(plan) {
+      return (plan.cues || []).map(function (c) {
+        var iid = c.instrument.id, asked = c.measuredHandles || {};
+        return {
+          cue: c.id, instrument: iid, stack: num(c.stack),
+          handles: Object.keys(asked).sort().map(function (h) {
+            var row = sourceOf(iid, h) || [null, null];
+            // A TRAVELLING HANDLE IS ASKED FOR TWO ENDS, and `appliedValue` answers for one number:
+            // handed a pair it reads `num` of an array, gets a NaN and reports a null applied, which
+            // is a lie about a handle that reached the renderer perfectly well. Each end is put
+            // through the same published range separately, which is what the fill itself does a few
+            // screens below when it writes the pair into a `map` node's own two ends.
+            var applied = Object.prototype.toString.call(asked[h]) === "[object Array]"
+              ? asked[h].map(function (v) { return appliedValue(iid, h, v)[1]; })
+              : appliedValue(iid, h, asked[h])[1];
+            return { handle: h, level: levelOf(iid, h), kind: row[0],
+                     requested: asked[h], applied: applied, reads: row[1] };
+          })
+        };
+      });
     }
 
     // WHAT A CUE COSTS, AND IT IS THE INSTRUMENT'S OWN DECLARATION rather than this file's.
@@ -4429,6 +4530,85 @@
                             out: { handle: "presence", value: 0, measured: true } };
         }
       }
+      var mute = [];
+      // A WINDOW WITH NO LENGTH IS NO WINDOW, and a voice given one is on screen for no instant of
+      // the passage. `cueWindows` closes the travelling voice at `travelOpen + reach·(1 − travelOpen)`,
+      // where `reach` is the two works' own score gap along the axis they travel — so a pair with no
+      // gap at all closes that window at the very point it opens, and the deviation that shifts the
+      // open point cannot separate them again. The cue is then named in the score, costed against the
+      // budget and handed to the renderer for a duration of nought.
+      //
+      // The audit caught it as two red rows once the other drops changed which casting the sweep
+      // photographs: `overlay` and `strata-light`, each on «dark» → «bright», each holding a window
+      // of [2.5, 2.5] in a passage of five seconds, each drawing nothing at its own peak and nothing
+      // at its own middle, because those are the same instant and it has no width.
+      //
+      // Nothing is chosen here and no length is required: a window either has duration or it does
+      // not. The pair that produced it still crosses — on the ground alone, or with whatever other
+      // voice the bundle gave it, which is the plain crossing a pair with no axis gap asks for.
+      for (i = cues.length - 1; i >= 0; i--) {
+        if (num(cues[i].stack) <= 0) continue;
+        if (num(cues[i].window[1]) > num(cues[i].window[0])) continue;
+        mute.push({ id: cues[i].id, instrument: cues[i].instrument.id,
+                    lost: (cues[i].levels || []).slice().sort(),
+                    why: "its window opens and closes at the same instant, so it would be handed to "
+                         + "the renderer for no duration at all" });
+        cues.splice(i, 1);
+      }
+      // A VOICE STANDING UNDER AN OPAQUE ONE, AND WHERE THAT IS AND IS NOT A SILENCE. An instrument
+      // may declare, on its own presence handle, that the share of the frame it stands on when its
+      // presence is whole is ALL of it. `overlay` has published that share since its manifest was
+      // written; `strata-light` and `strata-scale` gained the same field on 2026-09-07, because
+      // their own shaders make the same claim in prose and had no way to say it in a field.
+      //
+      // THE COMPOSITING ARITHMETIC SAYS WHAT THAT COSTS, and it needs no photographs. A voice is
+      // drawn onto the buffer the voices beneath it have already written; where the voice above
+      // reaches an alpha of one at every point, the result at every point is its own colour and none
+      // of the colour beneath, so the lower voice's handles cannot change one pixel of what is
+      // shown.
+      //
+      // BUT ONLY WHERE ITS PRESENCE IS WHOLE. The entry-door contract holds a stacked voice's
+      // reserved dry at NOTHING on both of its own doors and at whole across its middle, so a voice
+      // beneath one whose window is shorter than the passage is plainly on screen on either side of
+      // it. A drop there would take a voice a person can see, and an earlier draft of this rule did
+      // exactly that: it emptied `strata-scale` out of the arsenal altogether, which the audit
+      // caught as an instrument that ships and can never be chosen.
+      //
+      // So the rule is the one case the arithmetic actually covers, and it is the one the audit
+      // measured: a covering voice whose window is the WHOLE PASSAGE. Then its doors are the
+      // passage's own doors, there is no instant at which anything beneath it shows, and the score
+      // is two voices of which one has never been on screen.
+      // WHICH VOICE LEAVES, and it is the covering one. The ground can never be the one to go — no
+      // drop may remove it and a passage without it has no picture at all — and a middle voice
+      // beneath the cover is in the same position for the same span. So the covering voice stands
+      // down and what plays is the stack beneath it, whole and fully driven, which is a crossing
+      // this composition already writes on every passage that casts one voice fewer.
+      //
+      // The audit found this as a red row rather than as a count: `wind` cast as the ground with
+      // `strata-light` above it across the identical window, `wind`'s own handles driven and
+      // reaching the renderer, and a photograph of the frame with those handles forced to their
+      // published neutral differing by nought of 255. The instrument was doing everything right and
+      // nobody could see it.
+      var floor = null;
+      cues.forEach(function (c) { if (num(c.stack) <= 0) floor = c; });
+      if (floor) {
+        for (i = cues.length - 1; i >= 0; i--) {
+          if (num(cues[i].stack) <= 0) continue;
+          if (!coversTheFrameAtWhole(cues[i].instrument.id)) continue;
+          // THE GROUND'S OWN WINDOW IS THE PASSAGE, so a cue that spans it spans everything, and a
+          // cue that does not leaves the stack beneath it on screen at its own two doors.
+          if (num(cues[i].window[0]) > num(floor.window[0])
+              || num(cues[i].window[1]) < num(floor.window[1])) continue;
+          mute.push({ id: cues[i].id, instrument: cues[i].instrument.id,
+                      lost: (cues[i].levels || []).slice().sort(),
+                      hides: floor.instrument.id,
+                      why: "it declares its own coverage reaches the whole frame at presence whole "
+                           + "and its window is the whole passage, so «" + floor.id + "» beneath it "
+                           + "would never be on screen at any instant, and the ground is the one cue "
+                           + "no drop may remove" });
+          cues.splice(i, 1);
+        }
+      }
       var levels = ownTheLevels(cues, "pivot");
       for (i = 0; i < cues.length; i++) {
         cues[i].levelOwnership = levels[cues[i].id];
@@ -4460,11 +4640,12 @@
       // no structural handle at all: a name in the score, a draw call, a share of the budget, and
       // nothing a person can see.
       //
-      // S-115's audit put a number on it — grid-colour on 165 of 1258 castings and overlay on 55 of
-      // 85 were seated exactly that way — and it is the plainest form of his own complaint that
-      // polyphony exists on paper while the voices do not differ. Item 7 of the row says a voice
-      // counts only where its contribution is visible, and a voice with no levelled handle cannot
-      // have one.
+      // The argument is the levels law's own arithmetic. A cue draws its picture from the handles it
+      // holds; the stripping above removes every handle whose level it does not own; so a cue that
+      // owned none of the levels it drives comes out holding no structural handle at all, and what
+      // it draws is its own manifest neutral, which is the frame it was handed. Item 7 of the row
+      // says a voice counts only where its contribution is visible, and a voice with no levelled
+      // handle has none to give.
       //
       // THE GROUND IS NEVER DROPPED, whatever it owns. Stack nought is the one cue that fills the
       // frame and the floor every voice above it is drawn onto; a passage without it has no picture
@@ -4475,7 +4656,6 @@
       // The drop is RECORDED rather than done quietly: the plan carries the cue's own name, its
       // instrument and the levels it lost, so the diagnostics chain can say which candidate stood
       // and why it left, and a reader is never left wondering where a voice went.
-      var mute = [];
       for (i = cues.length - 1; i >= 0; i--) {
         if (num(cues[i].stack) <= 0) continue;
         if (Object.keys(cues[i].tracks).some(function (h) {
@@ -5554,7 +5734,24 @@
 
     // ---- composing one ordered pair ----
 
-    function compose(key, pair, fromW, toW, road, role, memory, routeFunction) {
+    // `skip` NAMES A SLOT AND THE INSTRUMENT THAT WENT SILENT IN IT (2026-09-07, S-115). The four
+    // silences this composition refuses to write are decided after a plan is FILLED, so the planner
+    // cannot see them while it is enumerating. `passageFor` fills the winner, and where a voice does
+    // not survive it asks for the composition again with that voice named here. The next-best legal
+    // bundle then wins, which is what shelf 4's presence law asks for: a crossing seats no fewer
+    // voices than a legal bundle of its own ledger offered.
+    //
+    // WHAT IS STRUCK IS ONE VOICE, NOT THE WHOLE CAST, and the difference is the whole worth of this
+    // list. A first draft named the entire bundle, so a cast whose arrival went silent lost its
+    // travelling voice with it — and the corpus is built with pairs that MUST cast a given
+    // instrument to prove a reading reaches its handle, which a cast thrown away whole takes with
+    // it. Striking the slot leaves every other slot standing, so the ledger's next-best bundle is
+    // ordinarily the same cast with one voice replaced.
+    //
+    // The list is finite and grows by one on each turn, so the loop that feeds it ends on the
+    // ledger's own size.
+    function slotKey(slot, iid) { return String(slot) + "|" + String(iid); }
+    function compose(key, pair, fromW, toW, road, role, memory, routeFunction, skip) {
       var pivot = pivotOf(pair), kind = pivot.elementKind, i, stood = [];
       if (pivot.measure === "banding") {
         var fracs = [];
@@ -6251,6 +6448,16 @@
               bc = colourCandidates[ci2];
               var row = { ground: bg, travel: bt, arrival: ba, colour: bc, ok: false, why: null,
                           score: null, tier: null, couldReach: false };
+              var struck = null;
+              if (bt && (skip || []).indexOf(slotKey("travel", bt)) >= 0) struck = bt;
+              if (!struck && ba && (skip || []).indexOf(slotKey("arrival", ba)) >= 0) struck = ba;
+              if (struck) {
+                row.why = "a fill of this same voice in this slot left «" + struck + "» with nothing "
+                        + "a person could see, so the planner was asked for the next legal bundle "
+                        + "of this ledger instead";
+                considered.push(row);
+                continue;
+              }
               if ((bt && bt === bg) || (ba && ba === bg) || (bt && ba && bt === ba)) {
                 row.why = "the same instrument would play two slots of one bundle";
                 considered.push(row);
@@ -9897,6 +10104,46 @@
         cues.push(c);
       });
 
+      // A VOICE WHOSE EVERY LEVELLED HANDLE STANDS AT ITS OWN PUBLISHED DEFAULT IS NOT CAST, and
+      // until 2026-09-07 it was. `buildTemplate` already drops a cue left holding no levelled handle
+      // at all; this is the other half of the same fact, and it can only be asked here, because
+      // until the nodes are written nobody knows what a handle will be driven TO. An instrument
+      // whose branch above found nothing in this pair's own record to ask of it falls through to
+      // `appliedValue`'s default on every handle it owns — a name in the score, a draw call, a share
+      // of the budget, and a picture identical to the one without it.
+      //
+      // The argument is the node arithmetic, and it holds for any collection whatever. A handle's
+      // node is built from what the fill asked of it; asked nothing, `appliedValue` answers with the
+      // manifest's own default and the node is a constant standing there for the whole passage. A
+      // cue whose every levelled handle is such a node holds its instrument at the pose its own
+      // manifest publishes from the first instant to the last, and that pose is what the frame
+      // already carries without it. His word of 2026-09-07: either a voice gets a real contribution
+      // or it is not cast — and forcing every instrument in would be the catalogue of effects the
+      // row bans outright.
+      //
+      // THE GROUND IS NEVER DROPPED, for the same reason `buildTemplate` never drops it: stack
+      // nought fills the frame and carries the crossing's own door dial, which is the passage's own
+      // idiom rather than a structural level, so it is never silent in the way this drop is about.
+      //
+      // The drop is recorded and the record travels: `silenced` below rides out of this function and
+      // reaches the diagnostics chain, so a reader asking «where did that candidate go» is answered
+      // instead of meeting a quietly shorter stack.
+      var silenced = [];
+      for (var qi = cues.length - 1; qi >= 0; qi--) {
+        if (num(cues[qi].stack) <= 0) continue;
+        if (!saysNothing(cues[qi])) continue;
+        silenced.push({ id: cues[qi].id, instrument: cues[qi].instrument.id,
+                        levels: (cues[qi].levels || []).slice(),
+                        handles: Object.keys(cues[qi].tracks || {}).filter(function (h) {
+                          return !!levelOf(cues[qi].instrument.id, h);
+                        }).sort(),
+                        why: "every levelled handle it owns stands at the instrument's own published "
+                             + "default for the whole passage, so it would draw a call and change "
+                             + "nothing a person can see" });
+        cues.splice(qi, 1);
+      }
+      silenced.reverse();
+
       var camera = copy(tpl.camera);
       if (camera.track.length === 4) {
         var travel = null;
@@ -10020,6 +10267,40 @@
         // the whole flight answers to rather than five this file would otherwise have to invent.
         var camBound = DOLLY_CAP;
 
+        // THE TONAL READING NO LONGER GATES THE TURN, and this is S-115's camera repair (his word of
+        // 07.09.2026: on suitable structural pairs the flight has to read as leaving surface A,
+        // crossing space and arriving on surface B, and a bigger tilt everywhere is not the answer).
+        //
+        // WHAT WAS WRONG, read off the walk rather than argued. `reach` above is the two works' own
+        // LIGHT apartness, and it multiplied every axis of the flight. Two photographs rarely stand
+        // far apart in median luminance, so `reach` came out small on almost every pair, and the
+        // walk of 07.09.2026 photographed the result: nine steps carrying 0.055 to 0.125 radians,
+        // three to seven degrees, which reads on screen as a faint drift and not as a journey. The
+        // pair whose lattices stood sixty degrees apart flew four degrees because the two works
+        // happened to be lit alike. A tonal reading was vetoing a structural gesture.
+        //
+        // WHAT REPLACES IT IS NOT A LARGER NUMBER. Every rotational axis below ALREADY computes its
+        // own apartness and already grades itself by it — roll by the two lattice angles folded to
+        // 0..90, yaw by how far the departing work's gate stands off the frame's middle, pitch by
+        // the two measured horizons. Those are the apartnesses a spatial flight is about. `reach`
+        // was a sixth reading multiplied on top of all of them, belonging to none. It is removed
+        // from the three, and each axis now spends `camBound` — the same single bound, unchanged —
+        // in the proportion its OWN measurement asks for. Nothing here invents a magnitude: a pair
+        // with parallel lattices, a centred gate and level horizons still flies nothing at all, and
+        // that is the calm crossing the row asks to keep.
+        //
+        // THE CONTEST IS UNTOUCHED BY THIS. The palindrome ban below ranks the three axes by the
+        // share each takes of its own ceiling, and `reach` was a factor common to all three, so the
+        // argmax it picks is the same axis it picked before. What changes is how far the winner
+        // actually travels.
+        //
+        // PAN AND THE DOLLY KEEP THE TONAL ENVELOPE, deliberately. The ban leaves exactly one
+        // rotational axis standing and zeroes the other two, so that axis IS the gesture; pan and
+        // the dolly play alongside it on every pair, and widening them the same way would move the
+        // whole picture across the frame on pairs whose gesture is meant to be small. They stay as
+        // they were.
+        var camTurn = 1;
+
         // PAN — toward the pivot's own centre. `motifs.radialCentre`, and `structure.radial.centre`
         // where a work carries no motif, where the work has one at all
         // (measuredParts()'s own `radialScore` says whether it does), otherwise the centre of
@@ -10097,7 +10378,7 @@
           if (rollDelta > 90) rollDelta -= 180;
           if (rollDelta < -90) rollDelta += 180;
           if (rollDelta !== 0) {
-            roll = reach * camBound * (rollDelta > 0 ? 1 : -1) * (Math.abs(rollDelta) / 90);
+            roll = camTurn * camBound * (rollDelta > 0 ? 1 : -1) * (Math.abs(rollDelta) / 90);
           }
         }
 
@@ -10120,7 +10401,7 @@
         if (cmf.gateAxis !== null && cmf.gateAxis !== undefined && cmf.gatePlace > 0) {
           var gateOff = cmf.gatePlace - 0.5;
           if (gateOff !== 0) {
-            yaw = reach * camBound * (gateOff > 0 ? 1 : -1) * (Math.abs(gateOff) / 0.5);
+            yaw = camTurn * camBound * (gateOff > 0 ? 1 : -1) * (Math.abs(gateOff) / 0.5);
           }
         }
 
@@ -10131,8 +10412,8 @@
         // contributes nothing to pitch AT ITS OWN POINT, which is measuredParts()'s own null read
         // honestly rather than defaulted to the frame's own middle. Its own magnitude candidate,
         // exactly as it always was; see below.
-        var pitchFrom = camAxisPitch(cmf, reach, camBound);
-        var pitchTo = camAxisPitch(cmt, reach, camBound);
+        var pitchFrom = camAxisPitch(cmf, camTurn, camBound);
+        var pitchTo = camAxisPitch(cmt, camTurn, camBound);
 
         // THE PALINDROME BAN, CAMERA READING (charter shelf 18, 2026-08-19, "the seat, on his
         // delegation... this is not his own word and does not become one"). The end points stay
@@ -10310,6 +10591,10 @@
         arrival: arrival,
         middle: world ? { kind: "world", world: world } : tpl.middle,
         cues: cues,
+        // THE VOICES THIS FILL DROPPED, each with the levels it held and why it left. Read by the
+        // diagnostics chain beside the score; `serialise` never sees it, so the score's byte fence
+        // is untouched.
+        silenced: silenced,
         camera: camera,
         doors: { from: fromId, to: toId },
         quality: tpl.quality,
@@ -10569,15 +10854,27 @@
       // ranking and a later lane may give a genre something it cannot carry; where every genre in
       // the vocabulary somehow answered with nothing, the ground genre composes last and its plan
       // is what plays.
-      for (i3 = 0; i3 < chosen.order.length; i3++) {
-        ran = chosen.order[i3];
-        pair = pairOf(a, b, dir, seed, ran.free, ran.ground, !spendsAMiracle);
-        made = compose(key, pair, fromW, toW, ran, step, memory || null, stepFn);
-        if (made[0] !== null) break;
-        tried.push({ road: ran.id, why: made[1] });
-      }
-      chosen.road = ran;
-      var plan = made[0];
+      // A ROAD WHOSE COMPOSITION LOSES A VOICE IS TRIED AGAIN FURTHER DOWN THE RANKING (2026-09-07,
+      // S-115). The four silences this composition now refuses to write — a cue left with no
+      // levelled handle, a cue whose every levelled handle would stand at its own published default,
+      // a cue given a window of no length, and a covering voice that would hide the whole stack
+      // beneath it for the whole passage — are each decided AFTER the plan is filled, because until
+      // the nodes are written nobody knows what a handle will be driven to. Dropping the voice there
+      // and stopping would leave the plan declaring a tier its own surviving voices contradict and
+      // the crossing seating fewer voices than a legal bundle of its own ledger offered, which are
+      // two standing laws (`tests/test_pass_lawful.py` R1, `tests/test_pass_polyphony_presence.py`).
+      //
+      // THE ANSWER IS THE RANKING THIS LOOP ALREADY WALKS. A road carries its own bundle planner, so
+      // the next road down composes a different cast entirely; the loop simply keeps going until a
+      // road's plan writes every voice it named. Nothing new decides anything — the order is the
+      // same ranking, the die is the same die, and a road is skipped for a fact about its own filled
+      // plan rather than for anything about the pair.
+      //
+      // AND WHERE NO ROAD WRITES A WHOLE CAST, THE FIRST ONE PLAYS. The walk still has to take this
+      // step, and a plan that lost a voice is a plan that plays: the drop is recorded, the tier is
+      // read back off what survived, and the crossing goes on. What that costs is one composition
+      // per road tried, and only on a step where the first road lost a voice, which the plan's own
+      // record then names.
       // WHICH OF A WORK'S OWN CUTS ACTS. Nothing recorded on this edge leaves it exactly where it
       // has always been; a further pass moves it by the die and the pass count, which is §4.8's
       // «the element selection may differ».
@@ -10590,25 +10887,93 @@
       // shows another of its own facets rather than the one it showed last time, by the same
       // mechanism a repeated edge already uses — one rule for both, exactly as §4.8's own kinship
       // step already reads a return and a repeat as one rule. A work the visit has not shown before
-      // reads at 0, which is the plain unrecurring case exactly as it always was.
+      // reads at 0, which is the plain unrecurring case exactly as it always was. It is read once,
+      // above the loop, because every road this pair is tried on answers to the same visit.
+      var kept = null, keptTpl = null, keptFilled = null, keptRoad = null, keptCast = 0;
+      var keptVoices = -1, keptLost = 0, turn;
       var recurrence = countIn(viewerMemory && viewerMemory.seenWorks, fromW.id)
                       + countIn(viewerMemory && viewerMemory.seenWorks, toW.id);
-      var cast = (plan.passIndex || recurrence)
-        ? plan.passIndex + recurrence + dieAmong(seed, key + "|actors", 97) : 0;
-      var tpl = buildTemplate(plan.shape, plan.spec);
-      var row = rowOf(plan);
-      var pv = plan.pivot;
-      var ctx = {
-        pivot: [pv.kind, pv.measure, pv.cut, pv.transform, pv.elementKind, pivotKindsOf(pv)],
-        fromParts: workParts(fromW, cast),
-        toParts: workParts(toW, cast),
-        // THE STEP'S OWN PLACE IN THE WALK, carried into the fill because the crest law needs it
-        // there (charter shelf 15, the culmination's suspension). `ctx` is what this file already
-        // hands the fill; nothing new is built to carry two words across one call.
-        role: step,
-        routeFunction: stepFn
-      };
-      var filled = fillPlan(key, row, tpl, ctx);
+      var clean = false;
+      for (i3 = 0; i3 < chosen.order.length && !clean; i3++) {
+        ran = chosen.order[i3];
+        pair = pairOf(a, b, dir, seed, ran.free, ran.ground, !spendsAMiracle);
+        // THE SAME ROAD IS ASKED AGAIN WITHOUT THE CAST THAT LOST A VOICE. `skip` grows by one each
+        // turn and every bundle it names is refused by the planner with its own reason, so this
+        // walks the road's own ledger from the best legal bundle downward and stops on the first
+        // whose fill writes every voice it named. THE WALK'S OWN BOUND IS THE LEDGER'S OWN SIZE,
+        // read off the ledger the first composition returned rather than chosen here: each turn
+        // strikes exactly one more bundle, so a walk that struck every row it examined has nothing
+        // left to be handed.
+        var skip = [], guard = 1;
+        for (turn = 0; turn < guard; turn++) {
+          made = compose(key, pair, fromW, toW, ran, step, memory || null, stepFn, skip);
+          if (made[0] === null) { tried.push({ road: ran.id, why: made[1] }); break; }
+          var tryPlan = made[0];
+          if (turn === 0) {
+            guard = ((tryPlan.bundles || {}).considered || []).length + 1;
+          }
+          var tryCast = (tryPlan.passIndex || recurrence)
+            ? tryPlan.passIndex + recurrence + dieAmong(seed, key + "|actors", 97) : 0;
+          var tryTpl = buildTemplate(tryPlan.shape, tryPlan.spec);
+          var tryPv = tryPlan.pivot;
+          var tryFilled = fillPlan(key, rowOf(tryPlan), tryTpl, {
+            pivot: [tryPv.kind, tryPv.measure, tryPv.cut, tryPv.transform, tryPv.elementKind,
+                    pivotKindsOf(tryPv)],
+            fromParts: workParts(fromW, tryCast),
+            toParts: workParts(toW, tryCast),
+            role: step,
+            routeFunction: stepFn
+          });
+          var lost = (tryTpl.muted || []).length + (tryFilled.silenced || []).length;
+          // WHAT MAKES ONE ATTEMPT BETTER THAN ANOTHER is the voices that actually survived its own
+          // fill, which is the same question shelf 4's presence law asks from outside. A clean fill
+          // wins outright and ends the walk.
+          var tryVoices = (tryFilled.cues || []).filter(function (c) {
+            return num(c.stack) > 0;
+          }).length;
+          // WHAT WINS IS THE RICHER CROSSING, and a clean fill ends the walk without winning it.
+          // Until 2026-09-07 21:30 a clean fill was taken OUTRIGHT, whatever it seated, and that
+          // handed a step of the walk away: on the built pair `tests/test_pass_composed.py` crosses
+          // for the crystallized arrival, the road's best bundle filled `waterline + matter + pour`
+          // with one voice silenced, the walk struck that slot and asked again, and four rows down
+          // the ledger a lone `livemirror` filled clean — nought voices above the ground, no arrival
+          // cue at all — and was taken. The plan still declared `arrival.mode = CRYSTALLIZED`; the
+          // seed reached no instrument, because there was none. A voice this walk drops is one
+          // nobody could see, so what survives a fill is exactly what a person gets, and trading
+          // two of them for none is the loss this loop exists to prevent. So the count decides, and
+          // a clean fill only breaks a tie against a kept attempt that lost something.
+          if (kept === null || tryVoices > keptVoices
+              || (tryVoices === keptVoices && !lost && keptLost > 0)) {
+            kept = tryPlan; keptTpl = tryTpl; keptFilled = tryFilled; keptRoad = ran;
+            keptCast = tryCast; keptVoices = tryVoices; keptLost = lost;
+          }
+          if (!lost) { clean = true; break; }
+          // WHICH VOICE WENT SILENT, taken off the drops themselves. A cue's own id names the slot
+          // it stood in, and the ground is never dropped, so what reaches this list is always a
+          // travelling or an arriving voice.
+          var went = (tryTpl.muted || []).concat(tryFilled.silenced || []);
+          var added = false, gi;
+          for (gi = 0; gi < went.length; gi++) {
+            var sk = slotKey(went[gi].id, went[gi].instrument);
+            if (skip.indexOf(sk) >= 0) continue;
+            skip.push(sk);
+            added = true;
+          }
+          if (!added) break;
+          tried.push({ road: ran.id,
+                       why: "the fill of its best legal bundle left a voice with nothing a person "
+                            + "could see, so this road's own ledger was asked for the next one" });
+        }
+      }
+      // WHERE EVERY ROAD REFUSED, the last answer stands exactly as it did before this loop was
+      // widened: `compose` no longer roads a pair out, so this is the shape of an answer rather
+      // than a case the vocabulary reaches.
+      ran = keptRoad || ran;
+      chosen.road = ran;
+      var plan = kept === null ? made[0] : kept;
+      var cast = keptCast;
+      var tpl = keptTpl;
+      var filled = keptFilled;
       // THE FAMILY THE WALK WILL READ, read the same way the walk reads it: off the composed plan,
       // by the transform the pivot's cut implies and the measure the passage travels. It is handed
       // back here so the walk's edge record and this file's own kinship step name one thing.
@@ -10667,6 +11032,32 @@
                // by in each — so a run that hands one mixed list and one roads-only list says here,
                // in numbers, which of them each cooling read.
                diagnostics: { routeFunction: stepFn, bundles: plan.bundles,
+                              // WHICH READING MOVED WHICH HANDLE, AND TO WHAT. Until 2026-09-07 the
+                              // chain stopped at the ROAD: the client's own `measurementsRead` named
+                              // the reading that backed the chosen genre and then handed back the
+                              // whole score's handle list for every one of them, identical for each,
+                              // which reads as attribution and is not one. This ledger is the real
+                              // link, and it is built out of two facts the composition already holds
+                              // rather than out of a new pass — `measuredHandles`, the value the fill
+                              // actually asked of each handle, and the register's own row for that
+                              // handle, which is where the sentence naming its measurement has always
+                              // been published. A handle the fill never asked for is absent here
+                              // rather than present with a default, so the ledger's own length is the
+                              // number of handles this passage really drove.
+                              //
+                              // BESIDE THE SCORE AND NOT INSIDE IT, for the same reason the bundle
+                              // ledger is: the score answers to a byte fence and this prose would
+                              // spend it (the note on every undriven node once put 517 of the
+                              // collection's scores over that fence). The diagnostic surface has no
+                              // fence.
+                              drove: droveLedger(filled),
+                              // WHERE A VOICE THAT WAS SEATED WENT. Two drops stand in this
+                              // composition — a cue left holding no levelled handle at all, and a cue
+                              // whose every levelled handle would have stood at its own published
+                              // default — and until today both were recorded onto a field nothing
+                              // read. A silently shorter stack is the one thing a reader cannot ask
+                              // about, so the record now travels to the surface that answers.
+                              silenced: (filled.silenced || []).concat(tpl.muted || []),
                               cooling: { roadPool: roadPlayedDistinct.length,
                                          letterPool: walkPlayedDistinct.length } },
                // The derivation's own reading, for the diagnostic surface and for the walk's edge

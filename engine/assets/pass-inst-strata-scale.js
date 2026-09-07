@@ -633,7 +633,17 @@
         // ladder removed the tempting tool for. This says whether a voice is present, and it is
         // ZERO AT BOTH DOORS of a voice standing over another: the voice joins a running picture
         // without replacing it and stands down the same way. Nothing is ever faded against anything.
+        //
+        // WHAT SHARE OF THE FRAME THIS VOICE STANDS ON WHEN ITS PRESENCE IS WHOLE, said in a field
+        // rather than only in the prose above the shader. This module's own coverage note already
+        // states it — «at either door one work's own two strata tile the frame exactly … so the
+        // alpha is 1 at every point» — and the fragment writes `mix(cov, 1.0, uMask) * uPresence`
+        // with `cov = max(a.a, b.a)`, the union of the two works' strata. So at presence whole this
+        // voice is the frame, and a voice seated beneath it is drawn where nobody can see it. Added
+        // 2026-09-07 with S-115's measured finding on its structural twin `strata-light`; the field
+        // name is `overlay`'s, which has published the same share since its manifest was written.
         presence: { min: 0, max: 1, def: 1, level: null,
+                    applied: { shareStandingAtWhole: 1 },
                     unit: "whether this voice is in the frame at all" },
       },
       neutrals: { a: 0, b: 1 },

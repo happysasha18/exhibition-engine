@@ -226,18 +226,15 @@ SUITES = [
 # found and fixed on 2026-09-02). Run individually on 2026-09-03, all five now pass — the repairs
 # those comments point to have since landed — so nothing is named here right now. Add a suite here,
 # with its own one-line reason, the day it ships red on purpose again.
-EXPECTED_RED = {
-    # S-115, 2026-09-07. The arsenal audit ships RED on purpose, and its red is the row's own
-    # finding rather than a regression: twenty-nine rows say, with a mechanism behind each, that an
-    # instrument the score names is not an instrument a viewer sees. `motionPeak` names the wrong
-    # instant — it takes the largest SUM of handle magnitudes, so a handle travelling from little to
-    # much peaks at the arriving door where the crossing has already landed, and twelve instruments
-    # read nothing at their own score's peak while reading up to 226 of 255 at the middle of their
-    # own window. Beside it, two instruments are seated on cues that drive no levelled handle at all,
-    # and five are inert on their own best casting. Each is being repaired inside S-115; the entry
-    # comes out the day the last of them does.
-    "pass_route_direction": "S-115's arsenal audit, red on its own findings until they are repaired",
-}
+# S-115's arsenal audit stood here from 2026-09-07 morning until 2026-09-07 14:54, red on its own
+# twenty-nine findings. Every one of them is repaired and the suite reads 117 of 117: the peak counts
+# motion a viewer can see rather than the largest sum of handle magnitudes; a voice seated with no
+# levelled handle left, a voice whose every levelled handle stands at its own published default, a
+# voice hidden under one that declares it covers the whole frame, and a voice given a window of no
+# length are each dropped and recorded rather than named in the score; and the camera's own rotation
+# no longer hangs on the two works' tonal apartness. The entry comes out with the last of them, which
+# is what its own last line asked for.
+EXPECTED_RED = {}
 
 # ---------------------------------------------------------------- the five proof layers (S-114)
 # THE SAME FIVE NAMES, IN THE SAME WORDS, that `.live-spec/profile.md` and `TEST_MATRIX.md` carry.

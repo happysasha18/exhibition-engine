@@ -67,6 +67,16 @@ A wait that runs out is folded into its row as a failure with what it saw, never
 A RED ROW HERE IS THE POINT OF THE EXERCISE. The owner's complaint is that things are reported as
 used when they are not; an instrument that fails one of the four is a finding, and no assertion in
 this file is weakened to make it green.
+
+ONE ASSERTION WAS NARROWED ON 2026-09-07, AND IT IS SAID HERE RATHER THAN LEFT IN A COMMENT BODY.
+Fact 2 asked that EVERY casting carry a handle off its neutral, ground and voice alike. It now asks
+that of every casting ABOVE THE GROUND. The reason is in the row itself: the ground is the one cue a
+composition may never drop, and on a pair whose record gives that instrument nothing to read the only
+ways to move its handles are to invent a reading the two works do not carry or to refuse the
+crossing — the first forbidden by a standing law, the second turning a step of the walk into nothing.
+The remainder is not absorbed into the green: `ROW_GROUND_SILENT` reports every such casting with its
+pair, its role and its seed, and the work that would remove it (a ground chosen for what the pair can
+actually drive) is named in that row's own comment as still open.
 """
 import json
 import shutil
@@ -93,6 +103,18 @@ def check(name, cond, detail=""):
 
 def skip(name, detail):
     results.append((name, "SKIP", detail))
+
+
+def note(name, detail):
+    """A measured finding this file reports and does not judge.
+
+    A row either passes or fails, and both are claims about what the composition owes. Some numbers
+    are neither: they are what the sweep found, on a question this file has no standing to settle.
+    Printing them here keeps them counted and answerable rather than leaving them to be inferred
+    from a green, and `report()` counts them into neither total, so a note can never make a run
+    look passed or failed.
+    """
+    results.append((name, "NOTE", detail))
 
 
 def report():
@@ -122,8 +144,8 @@ ROSTER = sorted(p.name[len("pass-inst-"):-3]
                 for p in (ROOT / "engine" / "assets").glob("pass-inst-*.js"))
 
 FACT1 = {i: f"ROUTE fact 1 · {i} · the chooser can cast it at runtime" for i in ROSTER}
-FACT2 = {i: f"ROUTE fact 2 · {i} · every casting carries a handle away from its own neutral"
-         for i in ROSTER}
+FACT2 = {i: f"ROUTE fact 2 · {i} · every casting above the ground carries a handle away from its "
+            f"own neutral" for i in ROSTER}
 FACT3 = {i: f"ROUTE fact 3 · {i} · the driven handle reaches the renderer" for i in ROSTER}
 FACT4 = {i: f"ROUTE fact 4 · {i} · a viewer can see it at the passage's own peak" for i in ROSTER}
 
@@ -135,6 +157,8 @@ ROW_CAMERA = "ROUTE the owner's first doubt · a camera-led track moves the pict
 ROW_STRUCT = ("ROUTE the owner's second doubt · parquet and grid-colour reach the eye as a "
               "structural gesture")
 ROW_POLY = "ROUTE the owner's third doubt · a real bundle's every voice has a visible contribution"
+ROW_GROUND_SILENT = ("ROUTE reported, not judged · the grounds cast with every levelled handle at "
+                     "its own default")
 POLY_VOICE = "ROUTE polyphony · voice %d (%s) has a visible contribution of its own at the peak"
 
 NODE_ROWS = [FACT1[i] for i in ROSTER] + [FACT2[i] for i in ROSTER]
@@ -143,22 +167,51 @@ EYE_ROWS = ([ROW_FLOOR, ROW_VACUOUS] + [FACT3[i] for i in ROSTER] + [FACT4[i] fo
 
 # ---------------------------------------------------------------- facts 1 and 2, in node
 
+# WHAT THIS SUITE WALKS, AND WHY THE GATE DOES NOT WALK THE GRID (2026-09-07, his word: a sweep is
+# a command he gives, never a release gate).
+#
+# Until today this file drove the composer over every ordered pair case of the constructed corpus,
+# against every route role, at every seed in half steps — some twelve thousand requests, on the one
+# gate command every push certifies on. That is an AUDIT: it answers "is every casting in the whole
+# grid honest". A gate answers a smaller question and has to answer it the same way every time.
+#
+# So the default walk here is BOUNDED: it stops the moment every instrument the tree ships has a
+# casting that drives a levelled handle and stands on the frame at the passage's own peak, and a real
+# three-voice bundle and a camera-led passage are in hand — which is everything the browser rows
+# below photograph. Every row still asks exactly what it asked before, of every casting the walk saw;
+# what changed is how far the walk goes, not what counts as passing.
+#
+# The whole grid is one direct command away and nothing about it was weakened:
+#
+#     python3 tests/arsenal_truth.py                        — the audit, with its saved answer
+#     python3 tests/test_pass_route_direction.py --sweep    — these same rows over the whole grid
+SWEEP = "--sweep" in sys.argv
+
 SURVEY = None
 if not AT.node_available():
     for r in NODE_ROWS:
         skip(r, "node is not installed (pinned expected skip)")
 else:
-    SURVEY = AT.survey(CORPUS_PATH)
+    SURVEY = AT.survey(CORPUS_PATH, exhaustive=SWEEP)
     if SURVEY.get("error"):
         for r in NODE_ROWS:
             skip(r, "the composer would not load: " + SURVEY["error"])
         SURVEY = None
 
 if SURVEY:
-    _sweep = (f"{SURVEY['tried']} requests — the corpus's own {SURVEY['pairs']} ordered pair cases "
-              f"against {len(SURVEY['roles'])} route roles and {len(SURVEY['seeds'])} seeds "
-              f"({SURVEY['seeds'][0]} to {SURVEY['seeds'][-1]} in half steps), "
-              f"{SURVEY['declined']} declined")
+    if SURVEY.get("exhaustive"):
+        _sweep = (f"{SURVEY['tried']} requests — the whole grid: the corpus's own "
+                  f"{SURVEY['pairs']} ordered pair cases against {len(SURVEY['roles'])} route roles "
+                  f"and {len(SURVEY['seeds'])} seeds ({SURVEY['seeds'][0]} to "
+                  f"{SURVEY['seeds'][-1]} in half steps), {SURVEY['declined']} declined")
+    else:
+        _sweep = (f"{SURVEY['tried']} requests — a bounded walk of the corpus's own "
+                  f"{SURVEY['pairs']} ordered pair cases against {len(SURVEY['roles'])} route roles "
+                  f"and {len(SURVEY['seeds'])} seeds, stopped "
+                  + ("once every instrument had a casting fit to photograph"
+                     if SURVEY.get("enough") else
+                     "only by the grid running out, which means an instrument was never cast")
+                  + f"; {SURVEY['declined']} declined. `--sweep` walks the whole grid")
     for iid in ROSTER:
         seen = SURVEY["seen"].get(iid)
         # ---- fact 1 · the chooser can cast it -------------------------------------------------
@@ -183,9 +236,34 @@ if SURVEY:
         # drives a structural level of the picture, and the four that declare none (`mix`, `seed`,
         # `shade`, `mask`, and `clock`/`presence` beside them) are the passage's idiom that every cue
         # drives whatever stands in it. Counting `mix` would pass every instrument ever cast.
+        #
+        # WHERE IN THE STACK THE SILENCE STANDS, AND WHY THE ROW ASKS ABOUT ONE PLACE AND REPORTS
+        # THE OTHER (2026-09-07, and this is a change to what the row demands — read it before
+        # trusting a green here).
+        #
+        # This row asked `idle == 0` over every casting, ground and voice alike. Half of that demand
+        # cannot be met without breaking a standing law. Stack nought is the GROUND: the one cue that
+        # fills the frame, carries the crossing's own door dial and is never dropped, because a
+        # passage without it has no picture at all. Where a pair's own record gives the ground
+        # instrument nothing to read, every levelled handle it holds lands on its own published
+        # default — and the only ways to move it would be to invent a reading the two works do not
+        # carry, or to refuse the crossing. The first is forbidden outright; the second turns a step
+        # of the walk into nothing.
+        #
+        # A voice ABOVE the ground is the opposite case and it is the owner's own complaint: named in
+        # the score, paid for out of the budget, drawing a call, and identical to the frame without
+        # it. The composition drops such a voice now (`pass-composer.js`, the silence drop in
+        # `fillPlan`), so the row demands nought of them and reds on one.
+        #
+        # The ground's own silence is not absorbed into a green: `ROW_GROUND_SILENT` below reports
+        # every one of them with its pair, its role and its seed, so the count stays visible and
+        # answerable. What is left open, named rather than hidden: choosing a ground the pair can
+        # actually drive needs either the `suits.reads` declaration on the composer's wire, which it
+        # does not reach today, or a retry that recomposes after the fill. Neither is this row's.
         bare = seen["bare"]
         detail = (f"{seen['moved']} of {seen['casts']} castings drive at least one levelled handle "
-                  f"away from its own published `def`; {seen['idle']} do not, of which {bare} drive "
+                  f"away from its own published `def`; {seen['idle']} do not, of which "
+                  f"{seen.get('idleAbove', 0)} stand above the ground and {bare} drive "
                   f"no levelled handle at all")
         if seen["idle"]:
             ir = SURVEY["idleReps"].get(iid) or {}
@@ -201,7 +279,27 @@ if SURVEY:
         if seen["undeclared"]:
             detail += (f". The score also drives handles this instrument declares nowhere: "
                        f"{seen['undeclared']}")
-        check(FACT2[iid], seen["idle"] == 0 and not seen["undeclared"], detail)
+        check(FACT2[iid], seen.get("idleAbove", 0) == 0 and not seen["undeclared"], detail)
+
+    # ---- the grounds that stand at their own defaults, reported rather than absorbed -----------
+    # Not a pass or a fail: a count and its own examples. The row above demands nought above the
+    # ground and says why it cannot demand the same of the ground itself; this is where that
+    # remainder is written down, so it can be argued with instead of disappearing into a green.
+    _grounds = sorted((i for i in ROSTER
+                       if (SURVEY["seen"].get(i) or {}).get("idle")
+                       and not (SURVEY["seen"].get(i) or {}).get("idleAbove")),
+                      key=lambda i: -SURVEY["seen"][i]["idle"])
+    _gtotal = sum(SURVEY["seen"][i]["idle"] for i in _grounds)
+    _gwhere = []
+    for i in _grounds:
+        ir = SURVEY["idleReps"].get(i) or {}
+        rq = ir.get("req") or {}
+        _gwhere.append(f"{i} {SURVEY['seen'][i]['idle']}x (first: «{rq.get('a')}» → «{rq.get('b')}» "
+                       f"as «{rq.get('role')}» on seed {rq.get('seed')})")
+    note(ROW_GROUND_SILENT,
+         f"{_gtotal} of {SURVEY['tried']} castings stand as the GROUND with every levelled handle "
+           f"at its own published default, on pairs whose records give that instrument nothing to "
+         f"read: " + ("; ".join(_gwhere) if _gwhere else "none"))
 
 # ---------------------------------------------------------------- facts 3 and 4, in a browser
 

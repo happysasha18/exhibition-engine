@@ -438,7 +438,7 @@ else:
             detail = toggled.get("detailHasShape") or ""
             has_shape = all(k in detail for k in
                             ('"route"', '"camera"', '"quality"', '"frames"', '"cadence"',
-                             '"landedInMs"', '"movedBy"', '"bundles"'))
+                             '"landedInMs"', '"bundles"', '"drove"', '"silenced"'))
             check(BROWSER_ROWS[6],
                   before_all_closed and first_opened_only and first_closed_again and has_shape,
                   f"before-all-closed={before_all_closed} "
@@ -485,8 +485,15 @@ else:
               return window.__exPass.joined ? window.__exPass.joined(cmd) : null;
             """)
             named = {"from", "to", "route", "road", "family", "pivot", "voices", "camera",
-                     "quality", "frames", "cadence", "landedInMs", "durationMs", "movedBy",
+                     "quality", "frames", "cadence", "landedInMs", "durationMs",
                      "bundles",
+                     # 2026-09-07, S-115 item 5. `movedBy` left this set on the same day: the
+                     # composer wrote that field nowhere, so the record carried a null that read
+                     # like a reading. What replaces it says the same thing for real — `drove`,
+                     # one row per played cue naming each handle the composition asked a value of
+                     # and the register's own sentence for the measurement it is read from, and
+                     # `silenced`, the voices that were seated and then dropped, with why.
+                     "drove", "silenced",
                      # 2026-09-06, his word: cameraLed, the score's own camera track, its pose at
                      # start/middle/end, the WorkRecord fields the ranking read for this pair, and
                      # the role/tier/downgrade the composer already names.
@@ -507,11 +514,12 @@ else:
                   and isinstance(joined.get("voices"), list)
                   # P1.2's own room — left empty rather than fabricated, and the honest answer for a
                   # synthetic dock this suite drove with no real score behind it at all.
-                  and joined.get("movedBy") is None and joined.get("bundles") == []
+                  and joined.get("bundles") == [] and joined.get("drove") == []
+                  and joined.get("silenced") == []
                   and isinstance(joined.get("durationMs"), (int, float))
                   # A synthetic dock carries no score and names two ids no WorkRecord was ever put
                   # under, so every new field reads its own honest empty rather than a fabricated
-                  # reading — the same room P1.2 already left for movedBy/bundles above.
+                  # reading — the same room P1.2 already left for the bundle ledger above.
                   and joined.get("cameraLed") is False and joined.get("cameraTrack") is None
                   and joined.get("cameraPose") == {"start": None, "middle": None, "end": None}
                   and joined.get("measurementsRead") == []

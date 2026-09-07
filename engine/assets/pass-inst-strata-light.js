@@ -586,7 +586,20 @@
         // ladder removed the tempting tool for. This says whether a voice is present, and it is
         // ZERO AT BOTH DOORS of a voice standing over another: the voice joins a running picture
         // without replacing it and stands down the same way. Nothing is ever faded against anything.
+        //
+        // WHAT SHARE OF THE FRAME THIS VOICE STANDS ON WHEN ITS PRESENCE IS WHOLE, said in a field
+        // rather than only in the prose above the shader. The proof is this module's own, at the
+        // door read a few hundred lines up: the two strata of the standing work partition the frame,
+        // «every point of the frame belongs to exactly one of them and the alpha is exactly 1 — on
+        // any buffer, at any cell count, at any level», and the fragment writes
+        // `mix(cov, 1.0, uMask) * uPresence` with `cov = max(a.a, b.a)`. So at presence whole this
+        // voice is the frame. Until 2026-09-07 that fact lived only in the comment, and a voice
+        // seated beneath this one was cast, budgeted and drawn where nobody could see it (S-115,
+        // measured 12:45: `wind`'s own largest gesture read 0 of 255 over 0 per cent of the frame
+        // inside the stack and 176 of 255 over 41 per cent with this voice lifted off). The field
+        // name is `overlay`'s, which has published the same share since its manifest was written.
         presence: { min: 0, max: 1, def: 1, level: null,
+                    applied: { shareStandingAtWhole: 1 },
                     unit: "whether this voice is in the frame at all" },
       },
       neutrals: { a: 0, b: 1 },

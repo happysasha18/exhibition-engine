@@ -585,6 +585,16 @@ every crossing under that ceiling for the visit; its quality ladder moves on the
 gaps; the diagnostics panel may show frame percentiles on a really open site, as observations. No
 suite, headless drive or verifier reads a frame time, a percentile or a wall clock as an
 acceptance signal; `tests/test_pass_device.py` states capability readings and reads the cast.
+**And the machine's own state is never a condition of a verdict.** (The owner's word, 2026-09-07
+19:47.) A suite answers for what the code does, so a run is not repeated because this host was busy
+and is not repeated because it was idle: a run taken again for either reason answers a question
+about the host. A result taken while the machine was loaded is not a weaker finding or a footnote —
+it is not evidence at all, and nothing about load, quiet or elapsed time is written into an evidence
+folder, compared against a second run, or offered as a reason a row reads the way it does. A suite
+that can go red because the host was busy is a defect in that suite, repaired by taking its cut from
+the thing it judges rather than from a clock, which is what the seam's own interruption row already
+does. This binds a session's scratch work and its own sentences as much as the repository: a
+throwaway script that reads a clock on this machine is the same breach as a suite that does.
 The pass's full contract — every field, every conformance row, its own build status — is
 `docs/design/PASS-API-V1.md`; that document is the live record of what stands built and this section
 does not repeat or shadow it. What this section states is what a reader of THIS spec must already

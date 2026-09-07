@@ -794,18 +794,25 @@ function camOwnCentre(w) {
   return null;
 }
 function camLevel(w) { return Number((w.luminance || {}).level) || 0; }
-// ONE ENVELOPE (grammar law 5): the pair's own reach, taken on the two works' own TONE —
-// `luminance.level`, the median of a work's own luminance — because a camera is shelf 17's WORLD
-// voice and flies through light, so how far apart two works stand in their own light is the
-// apartness a flight answers to. The judge seat settled this 2026-08-19 02:20, against the first
-// build's colour-spread reading; pass-composer.js's own camera block carries the same note.
+// THE PAIR'S OWN TONE (grammar law 5, narrowed by S-115, 2026-09-07): `luminance.level`, the
+// median of a work's own luminance, taken as the two works' apartness in light — because a camera
+// is shelf 17's WORLD voice and flies through light, so how far apart two works stand in their own
+// light is a real apartness. The judge seat settled the reading itself 2026-08-19 02:20, against
+// the first build's colour-spread reading. Until 07.09.2026 this envelope multiplied every axis of
+// the flight, and the walk that day showed a tonal reading vetoing a structural gesture: a pair
+// whose lattices stood sixty degrees apart still flew four degrees, because the two works happened
+// to be lit alike. `reach` below now spends its own span on pan and the dolly only; the three
+// rotational axes below grade themselves by their own structural apartness instead and no longer
+// carry it (pass-composer.js:10243, the comment beside `camTurn`).
 function camReach(fromW, toW) {
   var v = Math.abs(camLevel(fromW) - camLevel(toW));
   return v < 0 ? 0 : (v > 1 ? 1 : v);
 }
 // THE FIVE AXES, EXPECTED. Mirrors pass-composer.js's `fillPlan` camera block: pan and pitch differ
 // at the outbound and inbound points (an arc), logScale, roll and yaw hold one pair fact across
-// both (a plateau) — the shapes named in the code's own comments there.
+// both (a plateau) — the shapes named in the code's own comments there. `reach`, the pair's own
+// tone apartness above, still bounds pan and logScale below; roll, yaw and pitch grade themselves
+// by their own structural apartness instead and no longer carry it.
 function camExpected(fromW, toW, carried) {
   var reach = camReach(fromW, toW);
   var cFrom = camOwnCentre(fromW), cTo = camOwnCentre(toW);
@@ -844,7 +851,7 @@ function camExpected(fromW, toW, carried) {
     var d = (latTo.latticeAngleDeg - latFrom.latticeAngleDeg) % 180;
     if (d > 90) d -= 180;
     if (d < -90) d += 180;
-    if (d !== 0) rollRaw = reach * DOLLY_CAP * (d > 0 ? 1 : -1) * (Math.abs(d) / 90);
+    if (d !== 0) rollRaw = DOLLY_CAP * (d > 0 ? 1 : -1) * (Math.abs(d) / 90);
   }
   var rollFraction = 1;
   if (latFrom.latticePx > 0 && latTo.latticePx > 0) {
@@ -854,13 +861,13 @@ function camExpected(fromW, toW, carried) {
   var gate = camGate(fromW), yawRaw = 0;
   if (gate.gateAxis !== null && gate.gatePlace > 0) {
     var off = gate.gatePlace - 0.5;
-    if (off !== 0) yawRaw = reach * DOLLY_CAP * (off > 0 ? 1 : -1) * (Math.abs(off) / 0.5);
+    if (off !== 0) yawRaw = DOLLY_CAP * (off > 0 ? 1 : -1) * (Math.abs(off) / 0.5);
   }
   var gateTo = camGate(toW);
   var yawFraction = Math.min(1, Math.max(0, gateTo.gatePlace));
   var hFrom = camHorizon(fromW), hTo = camHorizon(toW);
-  var pitchFrom = hFrom === null ? 0 : (hFrom - 0.5) * reach * DOLLY_CAP;
-  var pitchTo = hTo === null ? 0 : (hTo - 0.5) * reach * DOLLY_CAP;
+  var pitchFrom = hFrom === null ? 0 : (hFrom - 0.5) * DOLLY_CAP;
+  var pitchTo = hTo === null ? 0 : (hTo - 0.5) * DOLLY_CAP;
   var levelFrom = camLevel(fromW), levelTo = camLevel(toW), levelSum = levelFrom + levelTo;
   var pitchInTied = pitchFrom * (levelSum > 0 ? levelFrom / levelSum : 0.5);
   // THE VOICE LEVEL (2026-08-24, this file's own note beside pass-composer.js's own). The three

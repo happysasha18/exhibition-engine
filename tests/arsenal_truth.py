@@ -78,6 +78,13 @@ const fs = require("fs"), vm = require("vm"), path = require("path");
 const [modulePath, fixturePath, corpusPath] = process.argv.slice(2);
 const CAPS = JSON.parse(process.env.CLIENT_CAPS || "{}");
 const SEED_STEP = Number(process.env.SEED_STEP);
+// WHETHER THIS RUN WALKS THE WHOLE GRID. Off by default, and the reason is the owner's own
+// word of 2026-09-07: a sweep is never a gate. The bounded walk below stops the moment it has
+// what the rows a gate carries actually need — one photographable casting of every instrument
+// the tree ships, one real bundle and one camera-led passage. The whole grid is an AUDIT, run
+// on the direct command `python3 tests/arsenal_truth.py`, and it is what answers "is EVERY
+// casting honest" rather than "can every instrument be seen at all".
+const EXHAUSTIVE = process.env.ARSENAL_EXHAUSTIVE === "1";
 
 let source = fs.readFileSync(modulePath, "utf8").replace(/@@NS@@/g, "");
 let joined = null;
@@ -179,7 +186,7 @@ const seen = {};        // iid -> what the sweep saw of it
 const reps = {};        // iid -> a casting fit to photograph: driven, and live at the passage's peak
 const repsAny = {};     // iid -> the first casting at all, so an instrument with no fit rep still says why
 const idleReps = {};    // iid -> the first casting whose every levelled handle stood at its own def
-let polyRep = null, camRep = null, declined = 0, tried = 0;
+let polyRep = null, camRep = null, declined = 0, tried = 0, enough = false;
 
 function camMoves(camera) {
   return ((camera || {}).track || []).some((pt) =>
@@ -188,7 +195,7 @@ function camMoves(camera) {
     || Math.abs(toNum((pt.pan || {}).x) || 0) > 0 || Math.abs(toNum((pt.pan || {}).y) || 0) > 0);
 }
 
-for (const [a, b, dir] of PAIRS) {
+walk: for (const [a, b, dir] of PAIRS) {
   for (const role of ROLES) {
     for (const seed of SEEDS) {
       tried++;
@@ -223,12 +230,21 @@ for (const [a, b, dir] of PAIRS) {
         polyRep = {req: req, json: p.json, cues: cues};
       }
       for (const c of cues) {
-        const s = seen[c.iid] || (seen[c.iid] = {casts: 0, moved: 0, idle: 0, bare: 0, slots: {},
-                                                 roles: {}, undeclared: {}});
+        const s = seen[c.iid] || (seen[c.iid] = {casts: 0, moved: 0, idle: 0, idleAbove: 0, bare: 0,
+                                                 slots: {}, roles: {}, undeclared: {}});
         s.casts++;
         s.slots[c.stack] = (s.slots[c.stack] || 0) + 1;
         s.roles[role] = (s.roles[role] || 0) + 1;
         if (c.moved.length) s.moved++; else s.idle++;
+        // WHERE IN THE STACK THE SILENCE STOOD, and the composition's own law is why this is
+        // counted apart. Stack nought is the ground: the one cue that fills the frame, that carries
+        // the crossing's own door dial, and that no drop may ever remove, because a passage without
+        // it has no picture at all. A voice ABOVE it standing at its own defaults is a voice the
+        // score named, the budget paid for and nobody can see — the owner's own complaint, and the
+        // composition drops it. A GROUND standing at its own defaults is a pair whose record gives
+        // that instrument nothing to read, and the standing law forbids inventing a reading for it.
+        // One number cannot answer for both, so both are counted.
+        if (!c.moved.length && Number(c.stack) > 0) s.idleAbove++;
         // A casting that drove no levelled handle AT ALL is a different silence from one that drove
         // them and left every one at its own default, and the row that reds on either says which.
         if (!c.levelled) s.bare++;
@@ -240,6 +256,14 @@ for (const [a, b, dir] of PAIRS) {
           reps[c.iid] = {req: req, cue: c, json: p.json};
         }
       }
+      // ENOUGH, ON A BOUNDED WALK. Every instrument the tree ships has a casting that drives a
+      // levelled handle and stands on the frame at the passage's own peak; a real three-voice bundle
+      // and a camera-led passage are in hand. Everything a browser row here photographs is answered,
+      // so walking further would only make the same answer out of more requests.
+      if (!EXHAUSTIVE && polyRep && camRep && ROSTER.every((i) => reps[i])) {
+        enough = true;
+        break walk;
+      }
     }
   }
 }
@@ -247,6 +271,7 @@ for (const [a, b, dir] of PAIRS) {
 console.log(JSON.stringify({
   version: joined.version, roster: ROSTER, seeds: SEEDS, roles: ROLES,
   pairs: PAIRS.length, tried: tried, declined: declined,
+  exhaustive: EXHAUSTIVE, enough: enough,
   seen: seen, reps: reps, repsAny: repsAny, idleReps: idleReps,
   polyRep: polyRep, camRep: camRep,
   manifests: ROSTER.reduce((o, i) => { o[i] = live[i].handles; return o; }, {}),
@@ -261,12 +286,23 @@ def node_available():
         return False
 
 
-def survey(corpus_path, timeout=900):
-    """Drive the real composer over the synthetic corpus and hand back what it cast, with what."""
+def survey(corpus_path, timeout=900, exhaustive=False):
+    """Drive the real composer over the synthetic corpus and hand back what it cast, with what.
+
+    `exhaustive=False`, the default, is the BOUNDED walk: it stops as soon as every instrument in the
+    roster has a casting that drives a levelled handle and stands on the frame at the passage's own
+    peak, and a real bundle and a camera-led passage are in hand. That is everything the browser rows
+    photograph, so a gate takes this one.
+
+    `exhaustive=True` walks the whole pair-case x route-role x seed grid. It is the AUDIT, and it
+    answers a different question — whether EVERY casting is honest, not whether every instrument can
+    be seen at all. The owner's word of 2026-09-07: a sweep is a command he gives, never a gate.
+    """
     tmp = Path(tempfile.mkdtemp(prefix="synth_arsenal_"))
     driver = tmp / "arsenal-driver.js"
     driver.write_text(DRIVER, encoding="utf-8")
     env = dict(os.environ, SEED_STEP=str(SEED_STEP),
+               ARSENAL_EXHAUSTIVE="1" if exhaustive else "0",
                CLIENT_CAPS=json.dumps({"intent": CLIENT_INTENT, "bytes": CLIENT_BYTES}))
     proc = subprocess.run(["node", str(driver), str(MODULE), str(FIXTURE), str(corpus_path)],
                           capture_output=True, text=True, env=env, timeout=timeout)
@@ -575,7 +611,7 @@ if __name__ == "__main__":
     if not node_available():
         print("node is not installed, so this command cannot ask the composer anything")
         raise SystemExit(2)
-    _s = survey(_corpus)
+    _s = survey(_corpus, exhaustive=True)
     if _s.get("error"):
         print("the composer would not load: " + _s["error"])
         raise SystemExit(2)
@@ -589,6 +625,8 @@ if __name__ == "__main__":
     _never = sorted(i for i in _roster if not (_rows.get(i) or {}).get("casts"))
     _idle = sorted((i for i in _roster if (_rows.get(i) or {}).get("idle")),
                    key=lambda i: -_rows[i]["idle"])
+    _above = sorted((i for i in _roster if (_rows.get(i) or {}).get("idleAbove")),
+                    key=lambda i: -_rows[i]["idleAbove"])
     _out.write_text(json.dumps({"tried": _s.get("tried"), "declined": _s.get("declined"),
                                 "seeds": _s.get("seeds"), "roles": _s.get("roles"),
                                 "pairs": _s.get("pairs"), "version": _s.get("version"),
@@ -602,8 +640,15 @@ if __name__ == "__main__":
     for i in _idle:
         r = _rows[i]
         print(f"  {i}: {r['idle']} of {r['casts']} castings"
+              + (f", {r['idleAbove']} of them above the ground" if r.get("idleAbove") else
+                 " — all of them as the ground")
               + (f", of which {r['bare']} drive no levelled handle at all" if r.get("bare") else ""))
     if not _idle:
         print("  none")
+    print("of those, standing ABOVE the ground, where the composition drops them:")
+    for i in _above:
+        print(f"  {i}: {_rows[i]['idleAbove']} of {_rows[i]['casts']} castings")
+    if not _above:
+        print("  none — no voice above the ground is cast with every levelled handle at its default")
     print(f"\nwritten to {_out}")
     shutil.rmtree(_dir, ignore_errors=True)

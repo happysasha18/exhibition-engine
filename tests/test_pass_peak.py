@@ -10,7 +10,12 @@ level, and this file measures the second of them:
 
 WHAT THE SHELF ASKS FOR, IN ARITHMETIC. Over the passage's own normalised time, every handle the
 plan drives has a rate of change; each is divided by that handle's own published range, so a handle
-with a wide span does not drown one with a narrow span; the sum of those is one dimensionless
+with a wide span does not drown one with a narrow span. Since 2026-09-07 every term also carries the
+weight of how much its OWN cue is actually in the frame at that instant — the cue's own door law,
+read as a function of the cue's own progress `p` through its own window: nothing at either door
+(`p` at 0 or 1), whole at the window's own middle (`p` at a half), which is `4p(1 − p)` and no other
+curve. A handle riding fastest at a door it has already reached, or has not yet opened, no longer
+wins the peak for motion nobody can see. The sum of those weighted rates is one dimensionless
 reading of how fast the whole plan is moving at an instant, and the instant it is largest is the
 motion peak. The witness camera's excursion — its two middle track points, the outbound pose and the
 inbound one — is what leads the eye away, so the peak stands inside it.
@@ -49,9 +54,13 @@ WHAT THIS FILE MEASURES, AND HOW IT AVOIDS ASSERTING THE COMPOSER'S OWN ANSWER B
      writes, each of the four named curves, each published handle range, windows from a sliver to
      the whole passage — and check the claims over that whole span:
 
-       · the four curves' own crests are closed-form and are checked against the numbers hand
-         arithmetic gives: `out` crests at the passage's open, `in` at its close, `smooth` at 1.5 at
-         its middle, and `linear` never crests at all because its rate never changes;
+       · the four curves' own crests are checked against this file's OWN weighted walk over the same
+         closed-form derivatives — never the module's — because the door-law weight moves two of the
+         four off the ends where their bare derivative alone used to crest: `out`'s rate is fastest at
+         the passage's open and `in`'s at its close, but the weight stands at exactly nought at both
+         doors, so each crest now stands a third of the way in from its own end instead of at it;
+         `smooth`'s crest is unmoved because it already stood at the middle, and `linear` now crests
+         at the middle too, at the weight's own crest, even though its bare rate never changes;
        · a window narrower than the passage multiplies the rate by exactly the passage's own length
          over the window's, so a handle that crosses its range in half the passage reads twice as
          fast as one that takes the whole of it;
@@ -331,6 +340,13 @@ def peak_of(cues, dur, manifests):
     when B stands" — so the instant the eye is led away is an instant inside the crossing rather
     than one of its two ends.
 
+    EVERY TERM ALSO CARRIES ITS OWN CUE'S IN-FRAME WEIGHT, since 2026-09-07. A handle can accelerate
+    all the way to the door of its own window, but a viewer standing at that door sees a cue the door
+    law has already put at nothing or has not yet let in, so raw velocity alone rewards motion nobody
+    can see. The weight is that same door law, read off the cue's own progress `p` through its own
+    window rather than off any number this file chose: nought at either door, whole at the window's
+    own middle, `4p(1 − p)`.
+
     The peak is the MIDDLE of the first maximal run of grid points, so a plateau reads as its own
     centre rather than as its first instant, and a sum that never changes has the whole interior for
     its plateau, whose middle is the passage's own middle.
@@ -338,12 +354,25 @@ def peak_of(cues, dur, manifests):
     if not dur > 0:
         return {"at": 0.0, "share": 0.5, "flat": True, "top": 0.0}
     terms = terms_of(cues, manifests)
+
+    def in_frame(cue, u):
+        """This term's own cue's door law at passage-time share `u` — nought outside the cue's own
+        window or at either of its two doors, `4p(1 − p)` of its own progress `p` elsewhere."""
+        w = cue.get("window") or [0.0, dur]
+        w0, w1 = float(w[0]), float(w[1])
+        if not w1 > w0:
+            return 0.0
+        p = (u * dur - w0) / (w1 - w0)
+        if p <= 0 or p >= 1:
+            return 0.0
+        return 4 * p * (1 - p)
+
     sums = []
     for i in range(1, STEPS):
         u = i / STEPS
         s = 0.0
         for node, cue, inv in terms:
-            s += abs(read_at(node, u, cue, dur)[1]) * inv
+            s += abs(read_at(node, u, cue, dur)[1]) * inv * in_frame(cue, u)
         sums.append(s)
     top = max(sums)
     low = min(sums)
@@ -601,29 +630,44 @@ else:
             def near(a, b, eps=1e-6):
                 return abs(float(a) - float(b)) <= eps
 
-            # `out` rises fastest at the open (2(1−x) at x = 0), `in` at the close (2x at x = 1),
-            # `smooth` at the middle (6x(1−x) = 1.5 at x = ½), and `linear` moves at one for the
-            # whole passage and therefore never crests. The walk stands strictly inside the
-            # passage, so the two that crest at an end are read one step in from it — 2(1 − 1/N)
-            # rather than 2, at the first and last interior step — and the two the walk reads whole
-            # are exact.
-            edge = 2 * (1 - 1.0 / STEPS)
-            curve_ok = (
-                near(c["out"]["top"], edge) and near(c["out"]["at"], D / STEPS)
-                and not c["out"]["flat"]
-                and near(c["in"]["top"], edge) and near(c["in"]["at"], D * (STEPS - 1) / STEPS)
-                and not c["in"]["flat"]
-                and near(c["smooth"]["top"], 1.5) and near(c["smooth"]["at"], D / 2)
-                and not c["smooth"]["flat"]
-                and near(c["linear"]["top"], 1.0) and c["linear"]["flat"]
-                and near(c["linear"]["at"], D / 2))
+            # `out` rises fastest at the open (2(1−x) at x = 0) and `in` at the close (2x at x = 1),
+            # but the door-law weight stands at exactly nought at both doors of the cue's own
+            # window, which here IS the whole passage, so neither crest can stand at an end any
+            # more: each is now the argmax of the derivative TIMES `4p(1 − p)`, a product that peaks
+            # a third of the way in from its own end (`out` at p = ⅓, `in` at p = ⅔ by the mirror),
+            # not at a grid point this file can hand-pick — so the expected crest is walked the same
+            # way `peak_of` walks it, on a single synthetic cue riding each shape across the whole
+            # passage, never on the module. `smooth` needs no such walk: its own bare crest already
+            # stood at the middle, where the weight also crests, so the product crests there too, at
+            # the same 1.5 as before. `linear`'s bare rate never changes, but the weight alone now
+            # shapes the SUM, so it crests at the middle as well, at the weight's own top of 1, and
+            # is no longer flat.
+            def curve_cue(shape):
+                rng = MANIFESTS["gears"]["handles"]["size"]
+                lo, hi = float(rng["min"]), float(rng["max"])
+                node = {"op": "map", "from": [0, 1], "to": [lo, hi],
+                        "in": {"op": "curve", "name": shape, "in": {"source": "cueProgress"}}}
+                return {"id": "t", "instrument": {"id": "gears", "api": 1}, "window": [0, D],
+                        "tracks": {"size": {"node": "n"}}, "nodes": {"n": node},
+                        "doors": {"in": {"handle": "mix", "value": 0},
+                                  "out": {"handle": "mix", "value": 1}}}
+
+            expected = {shape: peak_of([curve_cue(shape)], D, MANIFESTS)
+                        for shape in ("linear", "smooth", "in", "out")}
+            curve_ok = all(
+                near(c[shape]["top"], expected[shape]["top"])
+                and near(c[shape]["at"], expected[shape]["at"])
+                and c[shape]["flat"] == expected[shape]["flat"]
+                for shape in ("linear", "smooth", "in", "out"))
             check(ROW_CURVES, curve_ok,
-                  f"out crests at {c['out']['top']:.4f} at {c['out']['at']:.4f} s ({edge:.4f} at "
-                  f"{D / STEPS:.4f} asked); in at {c['in']['top']:.4f} at {c['in']['at']:.4f} s "
-                  f"({edge:.4f} at {D * (STEPS - 1) / STEPS:.4f} asked); smooth at "
-                  f"{c['smooth']['top']:.4f} at {c['smooth']['at']:.4f} s (1.5 at {D / 2:.1f} "
-                  f"asked); linear at {c['linear']['top']:.4f}, flat={c['linear']['flat']} "
-                  f"(1, flat asked)")
+                  f"out crests at {c['out']['top']:.4f} at {c['out']['at']:.4f} s "
+                  f"({expected['out']['top']:.4f} at {expected['out']['at']:.4f} asked); in at "
+                  f"{c['in']['top']:.4f} at {c['in']['at']:.4f} s ({expected['in']['top']:.4f} at "
+                  f"{expected['in']['at']:.4f} asked); smooth at {c['smooth']['top']:.4f} at "
+                  f"{c['smooth']['at']:.4f} s ({expected['smooth']['top']:.4f} at "
+                  f"{expected['smooth']['at']:.4f} asked); linear at {c['linear']['top']:.4f}, "
+                  f"flat={c['linear']['flat']} ({expected['linear']['top']:.4f}, flat="
+                  f"{expected['linear']['flat']} asked)")
 
             w = arith["windows"]
             window_ok = (near(w["whole"]["top"], 1.0) and near(w["half"]["top"], 2.0)

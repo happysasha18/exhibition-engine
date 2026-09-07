@@ -1064,12 +1064,23 @@ else:
               "pair %s→%s at seed %d composed %s" % (REAL_A, REAL_B, REAL_SEED,
                                                      json.dumps(_shipped)))
         # ---- ROW 2 (red-on-bug): the same pair, pre-fix, is a middle wearing the name ------------
+        # THE ROW READS THE DELTA THE PLANT MAKES, and until 2026-09-07 it also pinned two
+        # instrument names — `pour` and `grid-colour`, two of the three the cited step played at
+        # 8538c46. That pin went red the day the composition began dropping a voice nobody can see:
+        # this pair's planted bundle now casts `weave+beat` instead, which is the repair working
+        # rather than the plant failing. A cast is what the composition chose; what the row is about
+        # is what the step PLAYS, and naming the choice froze an implementation detail into the
+        # claim. So the two names are replaced by the delta itself, which is the stronger reading:
+        # the shipped composer reaches the tier with its one impossible event, the planted one does
+        # not and spends none, on the same pair at the same seed. A repair elsewhere that happened
+        # to degrade the shipped side would now red this row rather than slip past it.
         check(CULM_NAMES[1],
               _planted.get("realisedTier") != "culmination"
               and _planted.get("miracles") == 0
-              and "pour" in (_planted.get("cast") or "")
-              and "grid-colour" in (_planted.get("cast") or ""),
-              "the plant left the composition at %s" % json.dumps(_planted))
+              and _shipped.get("realisedTier") == "culmination"
+              and _shipped.get("miracles") == 1,
+              "the plant left the composition at %s, where the shipped composer on the same pair at "
+              "the same seed reached %s" % (json.dumps(_planted), json.dumps(_shipped)))
         # ---- ROW 3: the device tier forbids it, and the record says so ---------------------------
         _lean = _culm[1]["shipped"]
         check(CULM_NAMES[2],

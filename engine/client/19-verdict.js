@@ -372,10 +372,45 @@
       const summaryRoad = verdictRoadOf(joined);
       sum.textContent = joined.from + " → " + joined.to
         + (summaryRoad ? " · " + summaryRoad : "") + " · " + joined.durationMs + "мс";
+      el.appendChild(sum);
+      // WHAT MOVED, AND WHAT READ IT (S-115, work order item 5) — one line per handle the fill
+      // actually asked a value of, off `joined.drove` (pass-composer.js's own ledger, carried
+      // through by `passStepJoinedRecord` unchanged): the cue and handle, what was requested and
+      // what the handle's own published range let through, and the register's own sentence naming
+      // the measurement that handle reads. Rendered only where the ledger is non-empty, and in the
+      // same `.exv-step-detail` class the raw dump below already uses, so it opens and closes on the
+      // same row click and the same full-view chip — no new toggle.
+      const drovenLines = [];
+      (joined.drove || []).forEach((c) => {
+        (c.handles || []).forEach((h) => {
+          const req = Array.isArray(h.requested) ? "[" + h.requested.join(", ") + "]"
+                     : String(h.requested);
+          const app = Array.isArray(h.applied) ? "[" + h.applied.join(", ") + "]"
+                     : String(h.applied);
+          drovenLines.push(c.cue + "." + h.handle + " · " + req + " → " + app + " · " + h.reads);
+        });
+      });
+      if (drovenLines.length) {
+        const moved = document.createElement("div");
+        moved.className = "exv-step-detail";
+        moved.textContent = "what moved, and what read it:\n" + drovenLines.join("\n");
+        el.appendChild(moved);
+      }
+      // VOICES DROPPED (S-115, work order item 5) — one line per voice seated and then dropped, off
+      // `joined.silenced`: which instrument, its own id, and why; the occlusion drop's own
+      // `hiddenBy` named where present. Same non-empty guard and the same shared class as above.
+      const silencedLines = (joined.silenced || []).map((s) =>
+        s.instrument + " («" + s.id + "») — " + s.why
+        + (s.hiddenBy ? " (hidden by " + s.hiddenBy + ")" : ""));
+      if (silencedLines.length) {
+        const dropped = document.createElement("div");
+        dropped.className = "exv-step-detail";
+        dropped.textContent = "voices dropped:\n" + silencedLines.join("\n");
+        el.appendChild(dropped);
+      }
       const detail = document.createElement("div");
       detail.className = "exv-step-detail";
       detail.textContent = JSON.stringify(joined, null, 1);
-      el.appendChild(sum);
       el.appendChild(detail);
       el.addEventListener("click", () => {
         el.dataset.open = el.dataset.open === "1" ? "0" : "1";
