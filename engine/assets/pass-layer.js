@@ -1822,7 +1822,52 @@
     // continuous one to hold. That is the same fallback `art` already used.
     var ownArt = rec.ownPose || track;
     var pose = stagePose;
-    if (owner !== "stage") pose = camCompose(anchor, ownArt, rec.carry, carryWeight(rec, tSec));
+    if (owner !== "stage") {
+      // AN OWN CUE HOLDS THE AXES IT ACTUALLY REPORTS, AND NO OTHERS. It used to hold all of them,
+      // and that is why the one place this product has a real space to move through had no camera in
+      // it at all.
+      //
+      // The fleet's only own-camera instrument is the box fold, and it turns its solid INSIDE its own
+      // shader. So the pose it reports back is a pure reading of that box's own state, and every
+      // rotational place in it is a hard zero on purpose (`surfaceCameraPose`, pass-inst-boxfold.js):
+      // reporting a turn there would turn the carrier as well and the picture would be rotated twice.
+      // What was missed is what that costs on the other side. The composer writes a real flight for
+      // every pair — the roll, yaw or pitch its own palindrome ban picked, off the two works' own
+      // lattice gap, gate offset or horizon — and an own cue claiming the whole passage threw all of
+      // it away in exchange for zeros. S-115's route capture measured the result across ninety played
+      // steps on ten deals: not once was a step carrying a WORLD voice camera-led, and on the two
+      // fold steps the composer had written roll -0.102 and yaw -0.077 that never played.
+      //
+      // A place the own cue writes no number for is a place it is not using, and the stage's own
+      // flight is the honest thing to stand there. So the two are composed per place rather than one
+      // replacing the other: the box fold keeps the pan it reports, and the turn the composer wrote
+      // for this pair plays around it. Nothing is applied twice, because the two never name the same
+      // place — and the two ends stay exact, because the score's own track rests at neutral at "a"
+      // and at "b" by construction, so a landing is untouched.
+      // THE STAGE'S OWN CLOCK IS HELD ONLY FOR THE PLACES THE OWN CUE IS ACTUALLY WRITING. `track`
+      // above is read at `camStageClock`, which stops the stage's clock across an owned window so
+      // its flight resumes where it left off rather than jumping — and for a cue owning the whole
+      // passage that clock never advances at all, so `track` is the neutral pose and there is
+      // nothing there to fall back to. A place the own cue never writes was never held for it, so
+      // it is read at the real second, where the flight the composer wrote actually is.
+      //
+      // The two ends stay exact whatever this fills: the score's track rests at neutral at "a" and
+      // at "b" by construction, so a landing reads what it always read. Where an owned window opens
+      // or closes INSIDE a passage the host already measures the handoff against §6's tolerance and
+      // says so in its own row, so a discontinuity this introduces would be named rather than hidden.
+      var live = camStagePose(score, tSec, durationSec, function () {});
+      var held = {};
+      CAM_KEYS.forEach(function (k) {
+        if (k === "fov") {
+          held[k] = typeof ownArt[k] === "number" ? ownArt[k]
+                  : (typeof live[k] === "number" ? live[k] : null);
+          return;
+        }
+        var o = typeof ownArt[k] === "number" ? ownArt[k] : 0;
+        held[k] = o !== 0 ? o : (typeof live[k] === "number" ? live[k] : 0);
+      });
+      pose = camCompose(anchor, held, rec.carry, carryWeight(rec, tSec));
+    }
     // THE HANDOFF ITSELF, MEASURED. §6: at a handoff instant the two poses must agree within a
     // stated tolerance. What is compared is therefore the pose the OUTGOING authority reads at this
     // instant against the pose the INCOMING one reads at the same instant — never this frame against
