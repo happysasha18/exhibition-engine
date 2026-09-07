@@ -14,3 +14,8 @@ tests/suite_timings.json
 # Written by every suite run, like tests/suite_timings.json above it: machine output, never source.
 tests/route_wire_fence.txt
 tests/suite_verdicts.json
+
+# The bounded arsenal audit writes its answer here on every run (S-115). It is a saved result for
+# a person to read, not a record the tree carries: a tracked file rewritten by every run only ever
+# shows as a dirty tree.
+tests/arsenal_truth.json

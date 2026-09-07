@@ -38,7 +38,9 @@ seed span stated below — none of which grows when a photograph is added to the
 import json
 import os
 import re
+import shutil
 import subprocess
+import sys
 import tempfile
 from copy import deepcopy
 from pathlib import Path
@@ -543,3 +545,65 @@ def stack_at(br):
                   "       || e.name === 'no-instrument' || e.name === 'plan-lightened';})"
                   "   .map(function(e){return {gen: e.gen, why: e.name + ': ' + e.why};}),"
                   " last: r.events.slice(-6).map(function(e){return e.name + ': ' + e.why;})};")
+
+
+# ---------------------------------------------------------------- the one bounded audit command
+# HIS WORD OF 07.09.2026 11:00. This harness is allowed to be ONE bounded audit command with a saved
+# result, and no more: its job is to NAME the instruments that are genuinely unreachable or neutral,
+# and it does not replace looking at the screen. It is not a verification framework, it does not
+# sweep production pairs, and it is not worth a day.
+#
+# The bound is the corpus's own: a fixed set of constructed records and pair cases that does not grow
+# with the collection, walked once. The result is written where a person and a later run can both
+# read it, so the answer is looked up rather than recomputed.
+#
+#   python3 tests/arsenal_truth.py            → writes tests/arsenal_truth.json and prints the names
+#
+# The suite `tests/test_pass_route_direction.py` is the other reader of the same harness, and it is
+# the one that holds the standing verdict. This entry exists so a person can ask the question in one
+# command without driving a browser at all: facts 1 and 2 alone already name the unreachable and the
+# neutral, which is exactly what he asked this file to be for.
+if __name__ == "__main__":
+    import tempfile as _tf
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import synthetic_works as _sw
+
+    _out = Path(__file__).resolve().parent / "arsenal_truth.json"
+    _dir = Path(_tf.mkdtemp(prefix="arsenal_truth_"))
+    _corpus = _dir / "synthetic-works.json"
+    _corpus.write_text(json.dumps({"works": _sw.corpus(), "pairs": _sw.pairs()}), encoding="utf-8")
+    if not node_available():
+        print("node is not installed, so this command cannot ask the composer anything")
+        raise SystemExit(2)
+    _s = survey(_corpus)
+    if _s.get("error"):
+        print("the composer would not load: " + _s["error"])
+        raise SystemExit(2)
+
+    # THE FIELD NAMES ARE THE NODE SIDE'S OWN (`seen[iid]` above): `casts` how many requests cast it,
+    # `moved` how many of those drove a levelled handle away from its own default, `idle` how many did
+    # not, and `bare` how many drove no levelled handle at all. Read here rather than renamed, so one
+    # vocabulary crosses the whole harness.
+    _rows = _s.get("seen") or {}
+    _roster = _s.get("roster") or sorted(_rows)
+    _never = sorted(i for i in _roster if not (_rows.get(i) or {}).get("casts"))
+    _idle = sorted((i for i in _roster if (_rows.get(i) or {}).get("idle")),
+                   key=lambda i: -_rows[i]["idle"])
+    _out.write_text(json.dumps({"tried": _s.get("tried"), "declined": _s.get("declined"),
+                                "seeds": _s.get("seeds"), "roles": _s.get("roles"),
+                                "pairs": _s.get("pairs"), "version": _s.get("version"),
+                                "seen": _rows}, indent=2, sort_keys=True) + "\n")
+    print(f"{_s.get('tried')} requests over the constructed corpus "
+          f"({_s.get('pairs')} pair cases x {len(_s.get('roles') or [])} roles x "
+          f"{len(_s.get('seeds') or [])} seeds), {_s.get('declined')} declined")
+    print("never cast at all: " + (", ".join(_never) if _never else "none — every instrument is "
+                                                                    "reachable"))
+    print("cast with every levelled handle at its own default, at least once:")
+    for i in _idle:
+        r = _rows[i]
+        print(f"  {i}: {r['idle']} of {r['casts']} castings"
+              + (f", of which {r['bare']} drive no levelled handle at all" if r.get("bare") else ""))
+    if not _idle:
+        print("  none")
+    print(f"\nwritten to {_out}")
+    shutil.rmtree(_dir, ignore_errors=True)
