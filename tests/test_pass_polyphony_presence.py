@@ -62,7 +62,8 @@ def skip(name, detail):
 
 
 ROW_PRESENCE = "PASS-POLYPHONY-PRESENCE no real culmination-role crossing seats fewer live voices " \
-               "than a LEGAL bundle in its own ledger offered (shelf 4's presence law, per crossing)"
+               "than a LEGAL bundle in its own ledger offered, beyond the voices its own record " \
+               "says the composition removed as unseeable (shelf 4's presence law, per crossing)"
 ROW_REDBUG = "PASS-POLYPHONY-PRESENCE RED-ON-BUG · weakening the voice-count term below the tie-" \
              "break noise floor is caught by this same row"
 
@@ -102,8 +103,21 @@ for (let i = 0; i < ids.length && examined < CAP; i++) {
     const maxVoices = Math.max(...legal.map(voicesOf));
     const cues = (p.plan && p.plan.cues) || [];
     const winnerVoices = cues.filter((c) => c.id !== "pivot").length;
-    if (winnerVoices < maxVoices) {
-      violations.push({from, to, maxVoices, winnerVoices});
+    // A VOICE THE COMPOSITION REMOVED BECAUSE NOBODY COULD SEE IT IS NOT A VOICE THIS LAW IS OWED
+    // (2026-09-07). Shelf 4's presence law asks for LIVE voices, and since the silence repairs of
+    // this date a bundle may lawfully name a voice whose fill then leaves it with nothing on the
+    // frame — no levelled handle of its own left, every handle at its own published default, a
+    // window of no length, or a covering voice above it. The composition drops such a voice and
+    // publishes it on `diagnostics.silenced` with the reason. Counting it as a voice the crossing
+    // failed to seat would ask the composer to keep drawing something a person cannot see, which is
+    // the very thing those repairs removed. So the difference is a violation only where the
+    // crossing's own record does not account for it — measured over this same walk: 5 of 5 losses
+    // are accounted for on the standing composer, and 32 of 37 are NOT under this file's own plant,
+    // so the guard below keeps its teeth.
+    const silenced = ((p.diagnostics || {}).silenced || []).filter((s) => s.id !== "pivot");
+    if (winnerVoices + silenced.length < maxVoices) {
+      violations.push({from, to, maxVoices, winnerVoices, silenced: silenced.length,
+                       why: silenced.map((s) => s.instrument + ": " + String(s.why).slice(0, 80))});
     }
   }
 }
@@ -142,7 +156,8 @@ def main():
         check(ROW_PRESENCE, len(v) == 0,
               f"{got['checked']} real culmination-role crossings read a bundle ledger (of "
               f"{got['examined']} ordered pair/seed combinations examined); {len(v)} seated fewer "
-              f"live voices than a legal alternative in their own ledger"
+              f"live voices than a legal alternative in their own ledger with nothing on their own "
+              f"record to account for it"
               + (f"; first: {v[0]}" if v else ""))
 
     src = COMPOSER.read_text(encoding="utf-8")

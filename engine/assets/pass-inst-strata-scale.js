@@ -634,16 +634,22 @@
         // ZERO AT BOTH DOORS of a voice standing over another: the voice joins a running picture
         // without replacing it and stands down the same way. Nothing is ever faded against anything.
         //
-        // WHAT SHARE OF THE FRAME THIS VOICE STANDS ON WHEN ITS PRESENCE IS WHOLE, said in a field
-        // rather than only in the prose above the shader. This module's own coverage note already
-        // states it — «at either door one work's own two strata tile the frame exactly … so the
-        // alpha is 1 at every point» — and the fragment writes `mix(cov, 1.0, uMask) * uPresence`
-        // with `cov = max(a.a, b.a)`, the union of the two works' strata. So at presence whole this
-        // voice is the frame, and a voice seated beneath it is drawn where nobody can see it. Added
-        // 2026-09-07 with S-115's measured finding on its structural twin `strata-light`; the field
-        // name is `overlay`'s, which has published the same share since its manifest was written.
+        // WHAT SHARE OF THE FRAME THIS VOICE STANDS ON WHEN ITS PRESENCE IS WHOLE, AND THIS
+        // INSTRUMENT DECLARES NONE. `shareStandingAtWhole: 1` stood here for part of 2026-09-07,
+        // carried across from its structural twin `strata-light` by analogy rather than by a
+        // reading of this module. It is not true of this one, and this file says so itself, in the
+        // coverage block below: «Its absence is the band both a work's own strata have left — the
+        // departing work's matter has travelled out of it and the arriving work's has not yet
+        // reached it», and `coverage.how` is «max of the two works' own coverage … 0 where neither
+        // of its two strata has» carried matter there. The tiling sentence this claim was read off
+        // is stated AT EITHER DOOR, where one work stands whole; between the doors this instrument
+        // is a morph and it leaves that band, so what stands beneath it IS on screen.
+        //
+        // The claim cost the arsenal an instrument while it stood. `strata-scale` was cast on the
+        // constructed corpus's own 140 pair cases at all five route roles before it and on none of
+        // them after: seated above a ground for the whole passage, it was read as hiding the ground
+        // and dropped, and the reselect then filled the slot with something else, every time.
         presence: { min: 0, max: 1, def: 1, level: null,
-                    applied: { shareStandingAtWhole: 1 },
                     unit: "whether this voice is in the frame at all" },
       },
       neutrals: { a: 0, b: 1 },

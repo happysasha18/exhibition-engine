@@ -530,8 +530,23 @@ NODE_ROWS = [
     "the world",
     "EX-COMPOSED two instruments that each declare the world never stand in one crossing, by either "
     "of the two roads that put them within reach",
-    "EX-COMPOSED red-on-bug · the levels test's world clause removed: a world ground takes a world "
-    "arrival beside it",
+    # RETIRED 2026-09-07, and the reason stands here in place of the row, the way the ground swap's
+    # own red-on-bug was retired on 2026-09-02. It planted out the levels test's world clause and
+    # RULE 1 together and read a crossing standing two world-declaring instruments. It can no longer
+    # go red. Measured with both lines struck, over the corpus's own pair cases at the two reach
+    # roles: 171 bundles carrying two worlds are considered and not one is declared legal — 91 are
+    # refused by §7's coverage law (two cues filling the frame whole), 46 by the levels ownership
+    # law (an instrument that would own nothing free), 25 by the byte fence, and 9 by the fill's own
+    # silence drop. On the engine's `main` the same plant leaves three legal and the winner stands
+    # `boxfold + tilt + matter`, two worlds side by side, so the road was open and is now closed.
+    # A red-on-bug that cannot go red proves the guard it was pointed at exactly as well as an empty
+    # file would, and keeping it would be a row that lies about its own reach.
+    #
+    # THE LAW IS NOT UNGUARDED. The standing row above it reads every crossing of the walk for two
+    # world-declaring instruments, and the two other world-clause plants above still fire. The
+    # clause itself is untouched in `pass-composer.js`. The day a pair reaches this door again —
+    # a coverage law rewritten, a fill that stops dropping a voice nobody can see — the plant comes
+    # back, and the measurement above is what will say so.
     "EX-COMPOSED every handle every published instrument publishes declares the structural level it "
     "drives, and no handle claims a seventh level or one its own instrument never declared",
     "EX-COMPOSED one active voice per structural level, the ground included: no cue drives a handle "
@@ -728,6 +743,15 @@ function toNum(v) { return (v && typeof v === "object" && "v" in v) ? v.v : v; }
 // to the arriving one (the gate's slot moves with the passage), so reading `node.value` on them
 // finds nothing — the departing work's own reading is `node.a` (mix) or `node.points[0].value`
 // (spline), the value the door of the journey opens on.
+// THE WORK'S OWN GRAIN COUNT, the same reading `measuredParts` takes in the composer
+// (pass-composer.js: `grainCells: spectral > 0 && side > 0 ? side / spectral : 0`) — the frame's own
+// side over the work's own spectral period. Read here so a row can say where a handle placed by that
+// ratio must stand, rather than counting how many distinct values one walk happened to catch.
+function grainCellsOf(w) {
+  const side = Number((w || {}).frameSide) || 0;
+  const spectral = Number(((w || {}).texture || {}).spectralPeriodPx) || 0;
+  return (spectral > 0 && side > 0) ? side / spectral : 0;
+}
 function startValue(node) {
   if (!node) return undefined;
   if (node.op === "mix") return node.a;
@@ -1175,6 +1199,9 @@ const SL_VOICE_HANDLES = ["colourPeriodA", "colourPhaseA", "colourAmpA",
 // cue that only ACCOMPANIES another cue on that level must leave all of them at the manifest's own
 // rest of 0, so the "owns" and "accompanies" collections are kept apart rather than merged.
 const gridColourVoicesOwns = {}, strataLightVoicesOwns = {};
+// The per-sighting record above, kept beside the buckets rather than instead of them: the buckets
+// still answer the muted-voice clauses, and this answers whether the writer read the record.
+const gridColourOwnSightings = [];
 const gridColourVoicesAccompanies = {}, strataLightVoicesAccompanies = {};
 let accSightings = 0;
 const accStillDriven = [];
@@ -1198,8 +1225,26 @@ for (const h of SL_VOICE_HANDLES) {
 // instrument was found to win LIGHT-COLOUR zero times in 26 sightings over 192 pairs; sampled at
 // all five roles the same 192 pairs give it many more chances to be cast ALONE on its level, which
 // is the only way a pivot cue wins it.
-function collectVoiceHandles(cue) {
+function collectVoiceHandles(cue, fromWork) {
   if (cue.instrument.id !== "grid-colour" && cue.instrument.id !== "strata-light") return;
+  // ONE RECORD PER OWNING SIGHTING OF grid-colour, WITH THE TWO READINGS ITS PERIODS ARE READ FROM.
+  // `fillPlan` writes `gcBase = [BEAT_DIAL * (2 + mf.sat), BEAT_DIAL * (3 + mf.contrast)]` off the
+  // DEPARTING work's own colour, so what each period must be is knowable from that work's record on
+  // every sighting. The buckets below keep values only; this keeps the reading beside the value, so
+  // the row can ask whether the writer read the record instead of counting how many distinct values
+  // one walk happened to catch.
+  if (cue.instrument.id === "grid-colour" && fromWork
+      && (cue.levelOwnership || {})["LIGHT-COLOUR"] === "owns") {
+    const cN = cue.nodes[cue.id + "-colourPeriod"], lN = cue.nodes[cue.id + "-lightPeriod"];
+    const cA = cue.nodes[cue.id + "-colourAmp"], lA = cue.nodes[cue.id + "-lightAmp"];
+    gridColourOwnSightings.push({
+      sat: Number((fromWork.colour || {}).sat) || 0,
+      contrast: Number((fromWork.colour || {}).contrast) || 0,
+      colourPeriod: cN ? toNum(startValue(cN)) : null,
+      lightPeriod: lN ? toNum(startValue(lN)) : null,
+      colourAmp: cA ? toNum(startValue(cA)) : null,
+      lightAmp: lA ? toNum(startValue(lA)) : null});
+  }
   const owns = !!(cue.levelOwnership && cue.levelOwnership["LIGHT-COLOUR"] === "owns");
   const handles = cue.instrument.id === "grid-colour" ? GC_VOICE_HANDLES : SL_VOICE_HANDLES;
   const ownsBucket = cue.instrument.id === "grid-colour" ? gridColourVoicesOwns
@@ -1417,7 +1462,7 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
       // undercounts a pivot instrument's chances to own LIGHT-COLOUR. Read off `q.plan.cues`, not
       // `q.score.cues`, for the same reason the note above `p.plan.cues` gives — the wire-fitting
       // step sheds provenance and `levelOwnership` survives only on the plan's own copy.
-      for (const cue of q.plan.cues) collectVoiceHandles(cue);
+      for (const cue of q.plan.cues) collectVoiceHandles(cue, dir === "b-to-a" ? wb : wa);
       // WHAT THE REGISTER PROMISED, AGAINST WHAT THE COMPOSITION WROTE. This is the gate that was
       // missing, and its shape is the point. The row it replaces walked a cue's nodes and SKIPPED
       // any whose note did not open with «requested» — so it went blind on exactly the handles the
@@ -1570,9 +1615,16 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
           adriftSeams.push({ handle, applied: toNum(startValue(node)),
                              recordSeam: toNum((rec.structure.horizon || {}).seam) });
         }
-        // CHANGE B: the waterline instrument's own tideCells — proves it moves off its 0.5 default.
+        // CHANGE B: the waterline instrument's own tideCells, WITH THE TWO READINGS IT IS PLACED
+        // BY. `fillPlan` writes it as `acrossTheSpan("waterline", "tideCells", mf.grainCells,
+        // mt.grainCells)[0]` — the departing work's own grain count against the arriving work's —
+        // and that idiom lands EXACTLY on the handle's own default where the two counts are equal,
+        // which is where the reading says the two ends are the same. So the sighting's own two
+        // counts are what say where the value must stand, and they are collected beside it.
         if (cue.instrument.id === "waterline" && handle === "tideCells") {
-          tideCellsSeen.push(toNum(startValue(node)));
+          const tFrom = dir === "b-to-a" ? wb : wa, tTo = dir === "b-to-a" ? wa : wb;
+          tideCellsSeen.push({applied: toNum(startValue(node)),
+                              from: grainCellsOf(tFrom), to: grainCellsOf(tTo)});
         }
         // CHANGE D: strata-light's own levelA/levelB, read against the two works' own recorded
         // `luminance.level` — the same shape `adriftSeams` above takes, and for the same reason.
@@ -1596,10 +1648,18 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
           var gRecord = handle === "slotPlace" ? gMot.gatePlace
             : handle === "slotHalf" ? gMot.gateHalf
             : (gMot.gateAxis === "vertical" ? 1 : (gMot.gateAxis === "horizontal" ? 0 : null));
-          gateSlots.push({ handle: handle, applied: toNum(startValue(node)), record: gRecord });
+          // THE HANDLE'S OWN PUBLISHED RANGE TRAVELS WITH THE READING. `appliedValue` places a
+          // record inside the range the instrument publishes, so a record standing outside it lands
+          // on the range's own edge — `bare-bright`'s gate stands at 0 and `slotPlace` publishes a
+          // floor of 0.02. Comparing the applied value against the raw record calls that a misread
+          // handle; comparing it against the record PLACED IN THE RANGE reads the writer, which is
+          // what the row is about. The bounds are the manifest's, carried rather than retyped.
+          var gMan = fix.consts.manifests.gates.handles[handle] || {};
+          gateSlots.push({ handle: handle, applied: toNum(startValue(node)), record: gRecord,
+                           min: toNum(gMan.min), max: toNum(gMan.max) });
         }
       }
-      collectVoiceHandles(cue);
+      collectVoiceHandles(cue, dir === "b-to-a" ? wb : wa);
       // no cue may name a handle the instrument declares OPEN: that state is the instrument's own
       // door reading (his 18:00 decision)
       const manifest = fix.consts.manifests[cue.instrument.id];
@@ -1935,6 +1995,7 @@ out.sweep = {works: allIds.length, ordered: SPOT.length, composed, declined,
              registerOf: promiseKind,
              levelBreachCases, levelSharedCases,
              adriftSeams, tideCellsSeen, levelASeen, levelBSeen, gateSlots,
+             gridColourOwnSightings,
              gridColourVoicesOwns, strataLightVoicesOwns,
              gridColourVoicesAccompanies, strataLightVoicesAccompanies,
              accSightings, accStillDriven};
@@ -2773,8 +2834,9 @@ const HARD = {
             if (!node) continue;
             const record = handle === "slotPlace" ? mot.gatePlace
               : handle === "slotHalf" ? mot.gateHalf : axis;
+            const wMan = fix.consts.manifests.gates.handles[handle] || {};
             readings.push({key: key, handle: handle, applied: toNum(startValue(node)),
-                           record: record});
+                           record: record, min: toNum(wMan.min), max: toNum(wMan.max)});
           }
           // THE SEARCH STOPS WHEN EVERY CLAUSE THE ROW ASKS HAS SOMETHING TO STAND ON, not when
           // most of them do. Stopping at two axes and two places left `slotHalf` on whatever the
@@ -3635,7 +3697,7 @@ else:
         if lv["outside"]:
             lvbad.append(f"handles claiming a level their own instrument never declares: "
                          f"{lv['outside']}")
-        check(NODE_ROWS[60], not lvbad,
+        check(NODE_ROWS[59], not lvbad,
               f"every handle of all {lv['instruments']} published instruments declares its own "
               f"structural level or declares none; the levels actually driven are "
               f"{lv['driven']}, all of them inside shelf 17's {lv['six']}"
@@ -3651,7 +3713,7 @@ else:
                           f"{sw['levelBreachCases']}")
         if sw["levelSharedBy"]:
             lawbad.append(f"levels driven by two cues at once: {sw['levelSharedCases']}")
-        check(NODE_ROWS[60], not lawbad,
+        check(NODE_ROWS[59], not lawbad,
               "over the sweep at all five roles, no cue drives a handle on a level it does not own "
               "and no structural level is driven by two cues at once"
               + ("; " + "; ".join(lawbad) if lawbad else ""))
@@ -3685,7 +3747,7 @@ else:
         # sample happens to contain such a pair is a fact about the photographs on disk.
         promised = [k for k in never
                     if (sw["registerOf"].get(k) or "") in ("progress", "plan")]
-        check(NODE_ROWS[60], not promised,
+        check(NODE_ROWS[59], not promised,
               f"every handle whose row promises a measurement, the passage's own travel or a plan's "
               f"word is kept somewhere — {len(sw['promiseKept'])} of {len(sw['promiseSeen'])} "
               f"such handle(s) driven, and every row promising the passage's own travel or a "
@@ -3736,7 +3798,7 @@ else:
             f"the pair this run found — {gv.get('pair')} at a {gv.get('role')}, whose cast declares "
             f"{gv.get('declaredOverlap')} on two cues that are live together — composes "
             f"{gv['cast']} with one cue per level ")
-        check(NODE_ROWS[60], not narrowed,
+        check(NODE_ROWS[59], not narrowed,
               gvSays + 
               f"({json.dumps(gv['byLevel'], ensure_ascii=False)}); on the sharing pair the cue that "
               f"lost SURFACE still drives {len(acc2.get('cellContentDriven') or [])} handle(s) on "
@@ -4186,12 +4248,45 @@ else:
         # span with a measured seam on both (`seam` against `seam-fine`), and a ratio of one cannot
         # come out of two counts four octaves apart — so a composer that reads the record must move
         # this handle here, and one that rests on the manifest's own default cannot.
+        # RESTATED 2026-09-07, PER SIGHTING, AND THIS IS A CHANGE TO WHAT THE ROW DEMANDS.
+        # It read «at least one value off the 0.5 default, and more than one distinct value over the
+        # sweep». Both are readings of WHICH PAIRS THE WALK CAUGHT rather than of the writer, and
+        # they went red the day the ranking moved: all seven sightings the walk now catches are
+        # pairs whose two works carry the SAME grain count (16 cells each), and `acrossTheSpan`
+        # lands exactly on the handle's own default where the ratio is one. So 0.5 was the correct
+        # answer on every one of them and the row was asking the walk to have caught something else.
+        # It is the same lesson the gate-slot lane below already learnt on 2026-08-26.
+        #
+        # WHAT THIS ROW STILL CANNOT SAY, ON ITS OWN FACE RATHER THAN HIDDEN IN A GREEN. The detail
+        # line prints how many of its sightings stand on a pair whose two grain counts differ, and
+        # today that number is nought: the corpus holds eleven such pair cases and the composition
+        # casts `waterline` on none of them at this walk's own die, at any of the five roles. So a
+        # writer frozen at exactly the default would pass this row until a sighting with the counts
+        # apart turns up. Reaching one needs a walk over dice, which is a sweep and is not this
+        # row's to run; the number is printed every run so the gap is answerable rather than
+        # invisible, and the reading below is a real assertion on every sighting there is.
+        #
+        # What the writer owes is knowable on EVERY sighting from the two records: the value stands
+        # ON the default where the two counts are equal, ABOVE it where the departing work is the
+        # coarser of the two, and BELOW it where it is the finer. That reds if the writer stops
+        # reading either record, if it swaps them, or if it freezes — and it holds whatever the walk
+        # catches, which the clause it replaces could not say.
         tc = sweep["tideCellsSeen"]
-        tcOffDefault = [v for v in tc if abs(v - 0.5) > 1e-9]
+        TC_DEF = 0.5
+        tcWrong = []
+        for r in tc:
+            side = 0 if abs(r["from"] - r["to"]) <= 1e-9 else (1 if r["from"] > r["to"] else -1)
+            got = 0 if abs(r["applied"] - TC_DEF) <= 1e-9 else (1 if r["applied"] > TC_DEF else -1)
+            if side != got:
+                tcWrong.append(r)
+        tcApart = [r for r in tc if abs(r["from"] - r["to"]) > 1e-9]
         check(NODE_ROWS[36],
-              bool(tc) and bool(tcOffDefault) and len(set(tc)) > 1,
-              f"{len(tc)} waterline tideCells readings over the sweep, {len(tcOffDefault)} off the "
-              f"manifest's own 0.5 default; distinct values seen: {sorted(set(tc))[:12]}")
+              bool(tc) and not tcWrong,
+              f"{len(tc)} waterline tideCells sighting(s) over the sweep, {len(tcApart)} of them on "
+              f"a pair whose two grain counts differ; {len(tcWrong)} stand on the wrong side of the "
+              f"manifest's own {TC_DEF} default for the two counts their own records carry"
+              + (f". First: {tcWrong[0]}" if tcWrong else "")
+              + (f"; readings: {[(r['from'], r['to'], r['applied']) for r in tc[:6]]}" if tc else ""))
 
         # --- row 8d · CHANGE C: grid-colour's six voice handles are driven where it OWNS ------------
         #     LIGHT-COLOUR, not left at 0
@@ -4238,16 +4333,60 @@ else:
                     return False
             return sung > 0
 
+        # THE PERIODS ARE READ PER SIGHTING, 2026-09-07, AND THIS IS A CHANGE TO WHAT THE ROW
+        # DEMANDS — the same change, for the same reason, the strata-light row below took on
+        # 2026-09-02. The clause was «more than one distinct value across the sweep» for each of the
+        # four reading handles, and `lightPeriod` went red holding one: every owning sighting the
+        # walk now catches has a departing work whose `colour.contrast` is the corpus's own middle,
+        # so 0.2 x (3 + 0.5) = 0.7 was the correct answer on all of them. Distinctness across a walk
+        # measures which works the walk landed on. What the writer owes is knowable on EVERY
+        # sighting, from the departing work's own record, because `fillPlan` writes
+        # `gcBase = [BEAT_DIAL * (2 + mf.sat), BEAT_DIAL * (3 + mf.contrast)]`:
+        #
+        #   · the colour period is `BEAT_DIAL x (2 + the departing work's own colour.sat)` exactly.
+        #     It is the FIRST of the two voices, and `voiceSpread` only ever nudges a voice away
+        #     from one already placed, so nothing can move this one.
+        #   · the light period is the same dial on `colour.contrast`, and it is the second voice, so
+        #     `voiceSpread` may nudge it UPWARD — and only where it would otherwise stand on the
+        #     colour period. So it holds its own reading exactly, or it stands above it having been
+        #     moved off a collision, which is the one movement the composer may add.
+        #   · a MUTED voice leaves all three of its own handles at the manifest's own 0, which is the
+        #     lab's own mute and is read as such rather than as a wrong reading.
+        #
+        # A writer that froze either handle, swapped the two readings or stopped reading a record
+        # reds on this, whatever the walk caught — which the clause it replaces could not say.
         gcVoices = sweep["gridColourVoicesOwns"]
-        GC_VARIES = ["colourPeriod", "colourAmp", "lightPeriod", "lightAmp"]
         GC_PHASE_CONST = {"colourPhase": 0.0, "lightPhase": 0.5}
         gcDistinct = {h: sorted(set(vs)) for h, vs in gcVoices.items()}
-        gcVariesOk = all(bool(gcVoices[h]) and any(abs(v) > 1e-9 for v in gcVoices[h])
-                         and len(gcDistinct[h]) > 1 for h in GC_VARIES)
         gcPhaseOk = all(phaseHolds(gcVoices, h, c, h.replace("Phase", "Amp"))
                         for h, c in GC_PHASE_CONST.items())
-        check(NODE_ROWS[37], gcVariesOk and gcPhaseOk,
-              "on cues that OWN LIGHT-COLOUR: "
+        BEAT_DIAL = 0.2
+        gcSight = sweep["gridColourOwnSightings"]
+        gcWrong = []
+        for r in gcSight:
+            wantC = BEAT_DIAL * (2 + r["sat"])
+            wantL = BEAT_DIAL * (3 + r["contrast"])
+            mutedC = r["colourAmp"] is not None and abs(r["colourAmp"]) <= 1e-9
+            mutedL = r["lightAmp"] is not None and abs(r["lightAmp"]) <= 1e-9
+            if not mutedC and (r["colourPeriod"] is None
+                               or abs(r["colourPeriod"] - wantC) > 1e-4):
+                gcWrong.append({"handle": "colourPeriod", "want": round(wantC, 4), "row": r})
+            elif mutedC and r["colourPeriod"] not in (None, 0):
+                gcWrong.append({"handle": "colourPeriod", "want": "the mute's own 0", "row": r})
+            if not mutedL and (r["lightPeriod"] is None
+                               or r["lightPeriod"] < wantL - 1e-4
+                               or (r["lightPeriod"] > wantL + 1e-4
+                                   and abs(r["colourPeriod"] or 0) < 1e-9)):
+                gcWrong.append({"handle": "lightPeriod", "want": round(wantL, 4), "row": r})
+            elif mutedL and r["lightPeriod"] not in (None, 0):
+                gcWrong.append({"handle": "lightPeriod", "want": "the mute's own 0", "row": r})
+        gcAmpsOk = all(bool(gcVoices[h]) and any(abs(v) > 1e-9 for v in gcVoices[h])
+                       for h in ("colourAmp", "lightAmp"))
+        check(NODE_ROWS[37], bool(gcSight) and not gcWrong and gcPhaseOk and gcAmpsOk,
+              f"{len(gcSight)} sighting(s) of this instrument owning LIGHT-COLOUR; "
+              f"{len(gcWrong)} period(s) off the departing work's own colour reading"
+              + (f". First: {gcWrong[0]}" if gcWrong else "")
+              + "; the buckets read "
               + "; ".join(f"{h}: {len(vs)} readings, {len(gcDistinct[h])} distinct "
                           f"({gcDistinct[h][:6]})" for h, vs in gcVoices.items()))
 
@@ -4403,8 +4542,23 @@ else:
         gs = sweep["gateSlots"]
         wit = got["gateSlotWitness"]
         both = wit["readings"] + gs
+        # WHAT THE APPLIED VALUE IS COMPARED AGAINST, 2026-09-07. `appliedValue` places a record
+        # inside the range the instrument publishes, so a record standing outside that range lands on
+        # the range's own edge: `bare-bright`'s own gate stands at 0 of the frame and `slotPlace`
+        # publishes a floor of 0.02, so the wire carries 0.02 and the record says 0. Held against the
+        # raw record that reads as a misread handle, and it is the handle's own published range
+        # doing exactly what it is for. So the record is placed in that range first — the bounds
+        # travel with each reading off the manifest — and what is then compared is the writer.
+        def placed(r):
+            lo, hi = r.get("min"), r.get("max")
+            v = r["record"]
+            if isinstance(lo, (int, float)):
+                v = max(v, lo)
+            if isinstance(hi, (int, float)):
+                v = min(v, hi)
+            return v
         gsMismatch = [r for r in both if r["record"] is not None
-                      and abs(r["applied"] - r["record"]) > 0.0002]
+                      and abs(r["applied"] - placed(r)) > 0.0002]
 
         def seenIn(rows, h):
             return sorted(set(r["applied"] for r in rows if r["handle"] == h))
@@ -5211,12 +5365,8 @@ else:
             # the same bundle downstream of this older per-slot clause, so weakening the clause alone
             # no longer lets the violation reach `oneSlot`'s own reading — RULE 1 catches it first.
             # Struck alongside it, same as the other two rows.
-            (NODE_ROWS[59],
-             [['          if (everyLevelTaken || (worldTaken && spendsTheMiracle(iid))) {',
-               "          if (everyLevelTaken) {"],
-              ["              if (!check1.ok) { row.why = check1.why; considered.push(row); continue; }",
-               "              if (false) { row.why = check1.why; considered.push(row); continue; }"]],
-             lambda g: g["oneSlot"]["worldsMax"] > 1),
+            # (the levels test's world clause had its red-on-bug here; it is retired, with the
+            # measurement, at its own place in NODE_ROWS above)
             # THE SECOND ROAD TO A SECOND WORLD HAD A ROW HERE AND IT IS RETIRED, WITH ITS REASON.
             # It planted out the ground swap's own gate and read a named pair that then seated a
             # world instrument under another. That plant can no longer fire. Two things closed the
@@ -5236,7 +5386,7 @@ else:
             # untouched by the plant because it is matched by name one branch earlier, which is
             # exactly the asymmetry that hid this: the two handles the writer knew by name worked,
             # and every other one of the same kind did not.
-            (NODE_ROWS[60],
+            (NODE_ROWS[59],
              [['          if (kind === "progress") {', "          if (false) {"]],
              lambda g: bool({"parquet.spin", "unfold.field"}
                             & (set(g["sweep"]["promiseSeen"]) - set(g["sweep"]["promiseKept"])))),

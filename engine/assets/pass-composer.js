@@ -10942,6 +10942,12 @@
           // nobody could see, so what survives a fill is exactly what a person gets, and trading
           // two of them for none is the loss this loop exists to prevent. So the count decides, and
           // a clean fill only breaks a tie against a kept attempt that lost something.
+          // A CLEAN FILL BREAKS A TIE, and it is measured rather than chosen for tidiness. Over the
+          // works fixture's own 2000 ordered culmination crossings, keeping the earlier attempt on a
+          // tie leaves 144 crossings seating fewer live voices than a legal bundle of their own
+          // ledger offered; letting the clean attempt take the tie leaves 5. The clean attempt is
+          // the one whose own ledger and own plan describe the same composition, which is what the
+          // diagnostics chain and shelf 4's presence law both read.
           if (kept === null || tryVoices > keptVoices
               || (tryVoices === keptVoices && !lost && keptLost > 0)) {
             kept = tryPlan; keptTpl = tryTpl; keptFilled = tryFilled; keptRoad = ran;
