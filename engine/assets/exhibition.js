@@ -3567,6 +3567,16 @@
     // never instead of them. Empty on every step that was free to spend the event, and one plain
     // sentence on a step that was not, which is the reason a middle before the crest carried none.
     passage.miracleHeldForCrest = passMiracleHeldSaid(request.walkMiracles);
+    // THE GENERATION THIS PASSAGE WAS COMPOSED FOR (S-115, the diagnostics chain). Every reader of
+    // this list finds its row by the IDENTITY of the score — and the host is allowed to replace that
+    // score outright: `pass-layer.js`'s `mergeLastResort` builds a FRESH command carrying a FRESH
+    // score object whenever it casts the last resort (resources declined, every voice's prepare
+    // declined, the score refused, or the joy floor). The command that finally docks then carries a
+    // score no row was ever written under, so a lookup by identity alone finds nothing and the whole
+    // diagnostic record comes back blank on exactly the step that most needs printing. `passComposeFor`
+    // is only ever called from `passStart`, one line after `passGen` was raised for this very step, so
+    // the generation is this row's own and the rescue copies it across untouched.
+    passage.gen = passGen;
     passNote(passPassages, passage);
     if (passage.declined) {
       // THE ONE ROAD LEFT TO THE GLIDE FROM HERE, and it means one of the two works carries no
@@ -3745,14 +3755,35 @@
   function passStepJoinedRecord(cmd) {
     if (!cmd || !cmd.from || !cmd.to) return null;
     const fromId = cmd.from.id, toId = cmd.to.id;
+    // THE ROW IS FOUND BY THE SCORE THAT PLAYED, AND FAILING THAT BY THE GENERATION (S-115).
+    // A step the host rescued docks under a score object no row was ever written under — see the
+    // note over `passage.gen` in `passComposeFor` — so identity alone left the record blank on the
+    // one step whose reason a reader most needs. The generation survives the rescue untouched and
+    // names exactly one composed passage, so it is the second question. A synthetic dock carrying
+    // neither (this file's own diagnostic bench) still finds nothing, which is the honest answer.
     let row = null;
     for (let i = passPassages.length - 1; i >= 0; i--) {
       const r = passPassages[i];
       if (cmd.score && (r.score === cmd.score || r.played === cmd.score)) { row = r; break; }
+      if (r.gen !== undefined && cmd.gen !== undefined && r.gen === cmd.gen) { row = r; break; }
     }
     let rep = null;
     try { rep = passLayer && passLayer.report ? passLayer.report() : null; } catch (e) {}
-    const scoreCues = (row && row.score && Array.isArray(row.score.cues)) ? row.score.cues : [];
+    // THE CUES READ ARE THE ONES THAT PLAYED, never the ones that were planned. The two part company
+    // on every rescued step: the composer's row still holds the plan it wrote, and `cmd.score` is
+    // what the host actually put on the frame. Reading the plan there is what left `voices` empty on
+    // the reduced-motion floor (composed in this file, so no composer row exists for it at all) and
+    // on every last-resort cast.
+    const playedScore = cmd.score || null;
+    const scoreCues = (playedScore && Array.isArray(playedScore.cues)) ? playedScore.cues : [];
+    // WHERE THE SCORE THAT PLAYED CAME FROM, said in the record rather than left for a reader to
+    // infer from a blank. `cmd.reduced` is frozen onto the command by `passStart`.
+    const scoreSource = !playedScore ? null
+      : (row && (row.score === playedScore || row.played === playedScore))
+        ? "the composer's own passage"
+        : row ? "the host's own cast, over the composer's plan named above"
+        : cmd.reduced ? "the reduced-motion floor, composed in the client (no composer plan exists)"
+        : "handed in with the command";
     let station = { role: null, fn: null };
     try { station = passRouteStation(fromId, toId, null) || station; } catch (e) {}
     const qualityTier = (cmd.params && cmd.params.qualityTier) ? cmd.params.qualityTier.base : null;
@@ -3765,6 +3796,22 @@
     // (`window.__@@NS@@Pass.bench.cameraWalk`), the exact `camPoseAt`/`camStagePose` evaluator a
     // running frame calls, spared the transaction — the arithmetic (anchor, carry, handoff) is real
     // and belongs to that file alone.
+    //
+    // THE TRACK AND THE POSE USED TO BE ABLE TO DISAGREE WITH NOTHING TO TELL A READER WHICH PLAYED
+    // (S-115). `cameraTrack` is the stage's composed flight — what the composer wrote for this pair;
+    // the poses are what the host's own arithmetic reads. Since `pass-layer.js`'s `camPoseAt` was
+    // repaired (commit 1b57c2c) the two are no longer rivals: an own-camera cue holds ONLY the places
+    // it actually writes a number for, and the stage's flight fills every place it leaves alone. So
+    // each pose below now SAYS which places it got from which, by that file's own rule — every place
+    // but `fov` is the own cue's when its reported residual is a non-zero number there, and `fov` is
+    // the own cue's when it reports a number at all. `camKeys` is the host's own list, asked for
+    // rather than copied, so a place added there appears here without this file being touched.
+    //
+    // AND THE RESIDUAL HANDED TO THE WALK IS THE REAL ONE. This call used to pass `null`, which made
+    // the bench read an own-owned window off the stage's own held track — a pose no frame ever drew.
+    // `report().camera` is the whole `{owner, pose, stage, art}` the last frame composed, and `art`
+    // on an owned frame IS that cue's residual; it is the last one reported rather than one per
+    // instant, which is why each pose says which owner held it and which residual answered for it.
     const scoreCam = (cmd.score && cmd.score.camera) || null;
     const cameraLed = !!(scoreCam && scoreCam.lead);
     const cameraTrack = scoreCam ? (scoreCam.track || null) : null;
@@ -3774,11 +3821,43 @@
       const bench = diagObj && diagObj.bench;
       if (bench && typeof bench.cameraWalk === "function" && cmd.score) {
         const durSec = Math.max(0, (cmd.score.duration || 0) / 1000);
-        const walked = bench.cameraWalk(cmd.score, [0, durSec / 2, durSec], null);
+        const liveCam = (rep && rep.camera) || null;
+        const ownPose = (liveCam && liveCam.owner && liveCam.owner !== "stage")
+          ? (liveCam.art || null) : null;
+        const camKeys = (typeof bench.camKeys === "function") ? (bench.camKeys() || []) : [];
+        const walked = bench.cameraWalk(cmd.score, [0, durSec / 2, durSec], ownPose);
         const poses = (walked && walked.poses) || [];
-        cameraPose = { start: (poses[0] && poses[0].pose) || null,
-                       middle: (poses[1] && poses[1].pose) || null,
-                       end: (poses[2] && poses[2].pose) || null };
+        const readAt = (p) => {
+          if (!p) return null;
+          let own = null, stage = null, read;
+          if (p.owner === "stage") {
+            own = []; stage = camKeys.slice();
+            read = "the stage's own flight holds every place at this second; the pose is anchor + "
+                 + "that flight + carry, so `cameraTrack` above is what played here";
+          } else if (ownPose) {
+            own = []; stage = [];
+            camKeys.forEach((k) => {
+              const v = ownPose[k];
+              const held = (k === "fov") ? typeof v === "number"
+                                         : (typeof v === "number" && v !== 0);
+              (held ? own : stage).push(k);
+            });
+            read = "cue «" + p.owner + "» owns the camera at this second; the split is by "
+                 + "pass-layer.js's own rule (every place but fov is the own cue's where its "
+                 + "residual is a non-zero number there) against the residual of the last frame "
+                 + "the host drew, which that same cue owned";
+          } else {
+            read = "cue «" + p.owner + "» owns the camera at this second, and the host publishes a "
+                 + "residual only for the LAST frame it drew — the stage owned that one, so which "
+                 + "places this cue holds is not knowable from here and is left null rather than "
+                 + "guessed. The pose beside it is what the host's own arithmetic reads with no "
+                 + "residual reported, which is that file's own documented fallback";
+          }
+          return { at: p.at, owner: p.owner, pose: p.pose, stageFlight: p.stage,
+                   heldByTheOwnCue: own, filledByTheStageFlight: stage,
+                   ownResidual: (p.owner === "stage") ? null : ownPose, read: read };
+        };
+        cameraPose = { start: readAt(poses[0]), middle: readAt(poses[1]), end: readAt(poses[2]) };
       }
     } catch (e) {}
     // THE WORKRECORD FIELDS THE COMPOSER'S OWN RANKING ACTUALLY READ FOR THIS PAIR — `groundReadings`
@@ -3808,6 +3887,21 @@
       });
     });
     const supportsOf = (field) => (fieldSupports[field] !== undefined ? fieldSupports[field] : null);
+    // AND THE HANDLES THAT CHOICE ACTUALLY MOVED (S-115, his word: «какой выбор и handle поддержало
+    // каждое measurement»). `supports` above names the CHOICE — the road the reading backed — and
+    // stops there, so a reading that put parquet on the frame could not be followed to the lattice,
+    // period or phase it moved. The composer publishes no per-handle note (`sayVoice` writes numbers
+    // into the handle map and says nothing on the note channel `say()` writes), so the link is made
+    // where it is real and no further: a reading backed a road, that road cast these cues, and these
+    // are the handles those cues actually DRIVE — a handle with a `tracks` entry is one the score
+    // moves across the passage, as against a door it merely holds. A reading that backed a road the
+    // race did not take moved nothing, and gets an empty list rather than the played road's handles.
+    const drivenHandles = scoreCues.reduce((acc, c) => {
+      Object.keys((c && c.tracks) || {}).forEach((h) => acc.push(String(c.id) + "." + h));
+      return acc;
+    }, []);
+    const movedBySupport = (field) => (supportsOf(field) !== null && supportsOf(field) === chosenRoad)
+      ? drivenHandles.slice() : [];
     const worksAll = (typeof passWorkRecords === "function") ? (passWorkRecords() || {}) : {};
     const fromWork = worksAll[fromId] || null, toWork = worksAll[toId] || null;
     const measurementsRead = [];
@@ -3816,19 +3910,49 @@
       ["banding", "grid", "regions", "dominant_object", "texture", "radial", "named_objects"]
         .forEach((m) => measurementsRead.push({
           field: "measures." + m, from: numOf((fromWork.measures || {})[m]),
-          to: numOf((toWork.measures || {})[m]), supports: supportsOf("measures." + m) }));
+          to: numOf((toWork.measures || {})[m]), supports: supportsOf("measures." + m),
+          movedHandles: movedBySupport("measures." + m) }));
       // `colour.*` stays null: no `say()` site in `pass-composer.js` names a colour field in its
       // `why` today (`fillPlan`'s own colour voicing is a different note channel, `sayVoice`, not
       // this one) — an honest empty, not an oversight.
       ["sat", "brightness", "contrast"].forEach((c) => measurementsRead.push({
         field: "colour." + c, from: numOf((fromWork.colour || {})[c]),
-        to: numOf((toWork.colour || {})[c]), supports: null }));
+        to: numOf((toWork.colour || {})[c]), supports: null, movedHandles: [] }));
       measurementsRead.push({ field: "matter.materialVotes",
                               from: numOf((fromWork.matter || {}).materialVotes),
                               to: numOf((toWork.matter || {}).materialVotes),
-                              supports: supportsOf("matter.materialVotes") });
+                              supports: supportsOf("matter.materialVotes"),
+                              movedHandles: movedBySupport("matter.materialVotes") });
     }
-    return {
+    // THE HOST'S OWN HANDLE FALLBACKS, PAIRED WITH THE CUES THAT COULD HAVE RAISED THEM (S-115).
+    // `pass-layer.js` writes one row per handle it could not evaluate — `logEvt("handle-fallback",
+    // gen, handle + ": " + why)` — and that row carries the handle and the generation and NOTHING
+    // ELSE, so on a passage of three cues that all declare `turn` no reader could tell which
+    // instrument fell back. That file is outside this row's write set, and an attribution is not
+    // something to invent — so what is carried instead is a CANDIDATE list, and it is built from the
+    // host's own resolved handle maps rather than from the score: `report().stack[i].handles` is the
+    // map the host built for that voice by walking that instrument's own manifest, so a voice whose
+    // map carries this handle is a voice the host was resolving it for. Reading the score's `tracks`
+    // instead finds nothing at all for the commonest fallback of the two — «the score drives it with
+    // no track» is by definition a handle the score names no track for.
+    const fallbackRows = ((rep && rep.events) || [])
+      .filter((e) => e && e.name === "handle-fallback" && e.gen === cmd.gen)
+      .map((e) => {
+        const why = String(e.why || "");
+        const handle = why.split(":")[0].trim();
+        return { handle: handle, why: why,
+                 couldHaveRaisedIt: ((rep && rep.stack) || [])
+                   .filter((v) => v && v.handles
+                                  && Object.prototype.hasOwnProperty.call(v.handles, handle))
+                   .map((v) => v.id) };
+      });
+    const handleFallbacks = {
+      note: "the host's own rows carry the handle and the generation and no voice; "
+            + "`couldHaveRaisedIt` is every voice the host resolved that handle FOR — a candidate "
+            + "list, never an attribution",
+      rows: fallbackRows,
+    };
+    const out = {
       from: fromId, to: toId,
       // ROUTE ROLE/FUNCTION AND THE HARMONIC READING (charter shelf 15).
       route: { role: station.role, function: station.fn },
@@ -3842,6 +3966,10 @@
         const live = ((rep && rep.stack) || []).filter((v) => v.id === c.id)[0] || null;
         return { id: c.id, instrument: (c.instrument && c.instrument.id) || null,
                  window: c.window || null, levels: c.levels || null,
+                 // WHETHER THIS VOICE ACTUALLY DREW, off the host's own stack row — a voice the
+                 // resource ladder shed is named by the score and reaches no frame, and a record
+                 // that showed only its planned window read as though it had played.
+                 live: live ? !!live.live : null, played: live ? !!live.played : null,
                  handles: live ? live.handles : null, applied: live ? live.applied : null };
       }),
       // CAMERA REST AND HANG (§6): the two boxes, the pose each end asks for, and how far the last
@@ -3875,6 +4003,24 @@
       realisedTier: row ? (row.realisedTier || null) : null,
       downgradeReason: row && row.downgradeReason !== undefined ? row.downgradeReason : null,
     };
+    // WHAT ACTUALLY PLAYED, AND WHOSE IT WAS (S-115). Every field above `road`/`family`/`pivot`
+    // included is the COMPOSER'S plan; on a rescued step the host played something else, and until
+    // now the record said neither. This block is written only where a score played at all — a
+    // synthetic dock with no score played nothing and gets no sentence about it — so a reader who
+    // sees it can always trust that these are the cues that reached the frame.
+    if (playedScore) {
+      out.played = {
+        source: scoreSource,
+        intent: playedScore.intent || null,
+        instruments: scoreCues.map((c) => (c && c.instrument && c.instrument.id) || null),
+        familyAndPivotDescribe: (scoreSource === "the composer's own passage")
+          ? "the score that played"
+          : row ? "the composer's plan, which is NOT what played — the instruments here are"
+                : "nothing: there is no composer passage for this step, so they read null",
+        handleFallbacks: handleFallbacks,
+      };
+    }
+    return out;
   }
 
   // Every setting resolves ONCE, at nav-start, and the result is frozen onto the command. A live
@@ -10300,7 +10446,32 @@
       // shadow was there to draw and paints none of it outside.
       "padding:8px;border-radius:8px;max-width:280px;" +
       "box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}" +
-      "#ex-verdict .exv-info{opacity:.8;margin-bottom:6px;word-break:break-word;flex:none}" +
+      // THE TWO WORKING CONTROLS, IN THE PANEL'S OWN CORNER RATHER THAN IN ITS BUTTON ROW. The row
+      // below already carries four buttons inside 280px; two more would ellipsise «выгрузить» to
+      // nothing. These are chips over the panel's own top-right corner, and they are the two things
+      // this наряд owes a person and a capture harness alike (S-115):
+      //   ⤢ — the FULL VIEW. Compact is the default and it is right for the gap the panel lives in;
+      //       truncated is not. Full lets the panel take the whole screen and opens every step's
+      //       detail at once, which is how the whole chain is read on a 390px phone.
+      //   ✕ — OUT OF THE FRAME'S WAY. The audit measured this panel putting 6 271 pixels, worst 195
+      //       of 255, between two offers of one score at one pinned instant: any pixel reading taken
+      //       while it is up is polluted by it. Hidden it takes no layout and paints nothing, and the
+      //       hiding is STICKY — the next landing must not bring it back over the very capture it was
+      //       hidden for. It comes back on the `d` key (`в` on his own layout) or through
+      //       `window.__@@NS@@Pass.verdict.away(false)`, which is the road a harness drives.
+      "#ex-verdict .exv-tools{position:absolute;top:4px;right:4px;display:flex;gap:4px;z-index:1}" +
+      "#ex-verdict .exv-tool{padding:2px 6px;cursor:pointer;font:12px/1 system-ui,sans-serif}" +
+      "#ex-verdict[data-full=\"1\"]{left:12px;max-width:none;" +
+      "top:calc(env(safe-area-inset-top,0px) + 8px);" +
+      "max-height:calc(100dvh - env(safe-area-inset-top,0px)" +
+      // Full screen means the picture is BEHIND the panel rather than beside it, and the compact
+      // dock's .92 ground let the work read straight through the JSON. Nearly opaque here, and only
+      // here — the compact panel keeps the lighter ground it was measured on.
+      " - env(safe-area-inset-bottom,0px) - 16px);background:rgba(12,12,12,.98)}" +
+      "#ex-verdict[data-full=\"1\"] .exv-step-detail{display:block}" +
+      "#ex-verdict[data-full=\"1\"] .exv-step-sum{white-space:normal;overflow:visible}" +
+      "#ex-verdict .exv-info{opacity:.8;margin-bottom:6px;word-break:break-word;flex:none;" +
+      "padding-right:58px;min-height:16px}" +
       "#ex-verdict .exv-note{width:100%;box-sizing:border-box;margin-bottom:6px;padding:4px;" +
       "flex:none}" +
       "#ex-verdict .exv-row{display:flex;gap:6px;flex:none}" +
@@ -10317,6 +10488,9 @@
       "#ex-verdict[hidden]{display:none}" +
       "#ex-verdict[data-pending=\"0\"] .exv-info,#ex-verdict[data-pending=\"0\"] .exv-note," +
       "#ex-verdict[data-pending=\"0\"] .exv-btns{display:none}" +
+      // With nothing pending the info line is gone and the button row rises to the top, straight
+      // under the two corner chips — so it keeps their width clear of itself.
+      "#ex-verdict[data-pending=\"0\"] .exv-row{padding-right:58px}" +
       "#ex-verdict .exv-list{flex:1 1 auto;min-height:0;overflow-y:auto;" +
       "overscroll-behavior:contain;-webkit-overflow-scrolling:touch;margin-top:6px}" +
       "#ex-verdict .exv-list:empty{display:none}" +
@@ -10369,6 +10543,40 @@
     const list = document.createElement("div");
     list.className = "exv-list";
 
+    // A HIDDEN PANEL STAYS HIDDEN THROUGH THE NEXT LANDING. Without this flag `verdictShowPending`
+    // would unhide it at the very next dock, which is the one instant a capture is being taken.
+    let verdictAway = false;
+    function verdictSetAway(on) {
+      verdictAway = !!on;
+      panel.hidden = verdictAway || !verdictHistory.length;
+      if (!panel.hidden) verdictFit();
+      return verdictAway;
+    }
+    function verdictSetFull(on) {
+      panel.dataset.full = on ? "1" : "0";
+      verdictFit();
+      return panel.dataset.full === "1";
+    }
+    const tools = document.createElement("div");
+    tools.className = "exv-tools";
+    const fullBtn = document.createElement("button");
+    fullBtn.type = "button";
+    fullBtn.className = "exv-tool";
+    fullBtn.textContent = "⤢";
+    fullBtn.title = "во весь экран — вся цепочка каждого шага, без обрезания";
+    fullBtn.setAttribute("aria-label", fullBtn.title);
+    fullBtn.addEventListener("click", () => verdictSetFull(panel.dataset.full !== "1"));
+    const hideBtn = document.createElement("button");
+    hideBtn.type = "button";
+    hideBtn.className = "exv-tool";
+    hideBtn.textContent = "✕";
+    hideBtn.title = "убрать панель с кадра — вернуть клавишей d";
+    hideBtn.setAttribute("aria-label", hideBtn.title);
+    hideBtn.addEventListener("click", () => verdictSetAway(true));
+    tools.appendChild(fullBtn);
+    tools.appendChild(hideBtn);
+
+    panel.appendChild(tools);
     panel.appendChild(info);
     panel.appendChild(note);
     panel.appendChild(row);
@@ -10383,6 +10591,9 @@
     // last one), there is no picture edge to stop at and the stylesheet's own viewport ceiling
     // stands. Nothing is typed here: both numbers are read off the two boxes themselves.
     function verdictFit() {
+      // THE FULL VIEW IS THE ONE PLACE THE PICTURE IS NOT THE CEILING. It is asked for by hand, by a
+      // person reading the whole chain, and the stylesheet's own full-view height stands instead.
+      if (panel.dataset.full === "1") { panel.style.maxHeight = ""; return; }
       let floor = null;
       try {
         const top = panel.getBoundingClientRect().top;
@@ -10409,7 +10620,7 @@
     addEventListener("resize", verdictRefit);
 
     function verdictShowPending() {
-      panel.hidden = false;
+      if (!verdictAway) panel.hidden = false;
       panel.dataset.pending = verdictPending ? "1" : "0";
       info.textContent = verdictPending
         ? verdictPending.from + " → " + verdictPending.to
@@ -10458,23 +10669,20 @@
       } catch (e) {}
     }
 
-    // Read the passage row a landed command played, the same way `passEdgeRemember` finds it —
-    // by the identity of the score, never by re-deriving one. A declined or still-forming crossing
-    // (no score at all) reads back a bare road/cues, which is the honest answer: nothing drew.
-    function verdictRoadAndCues(cmd) {
-      if (!cmd.score) return { road: null, cues: [] };
-      for (let i = passPassages.length - 1; i >= 0; i--) {
-        const r = passPassages[i];
-        if (r.score === cmd.score || r.played === cmd.score) {
-          const cues = (r.score && Array.isArray(r.score.cues)) ? r.score.cues : [];
-          return {
-            road: r.road || null,
-            cues: cues.map((c) => String((c && c.id) || "?") + ":"
-              + String((c && c.instrument && c.instrument.id) || "?")),
-          };
-        }
-      }
-      return { road: null, cues: [] };
+    // THE ROAD AND THE CUES COME OFF THE JOINED RECORD, and off nothing else (S-115). This file used
+    // to keep its own second lookup into `passPassages` by score identity — which is exactly the
+    // lookup that comes back empty on a step the host rescued, because the score that docks then is
+    // one no passage row was ever written under. `passStepJoinedRecord` now answers that case (by
+    // generation, and off the score that actually played), so reading it here removes the second copy
+    // rather than repairing it twice. Where a rescue means there IS no composer road, the panel says
+    // where the score came from instead of showing a blank.
+    function verdictRoadOf(joined) {
+      if (!joined) return null;
+      return joined.road || (joined.played ? joined.played.source : null) || null;
+    }
+    function verdictCuesOf(joined) {
+      return (joined && Array.isArray(joined.voices) ? joined.voices : [])
+        .map((v) => String((v && v.id) || "?") + ":" + String((v && v.instrument) || "?"));
     }
 
     // Any dock that is not itself a judgeable crossing (a jump, or a landing on the door) still
@@ -10506,15 +10714,16 @@
     function verdictAppendStep(cmd) {
       let joined = null;
       try { joined = passStepJoinedRecord(cmd); } catch (e) {}
-      if (!joined) return;
+      if (!joined) return null;
       verdictHistory.push(joined);
       const el = document.createElement("div");
       el.className = "exv-step";
       el.dataset.open = "0";
       const sum = document.createElement("div");
       sum.className = "exv-step-sum";
+      const summaryRoad = verdictRoadOf(joined);
       sum.textContent = joined.from + " → " + joined.to
-        + (joined.road ? " · " + joined.road : "") + " · " + joined.durationMs + "мс";
+        + (summaryRoad ? " · " + summaryRoad : "") + " · " + joined.durationMs + "мс";
       const detail = document.createElement("div");
       detail.className = "exv-step-detail";
       detail.textContent = JSON.stringify(joined, null, 1);
@@ -10526,6 +10735,7 @@
       });
       list.appendChild(el);
       verdictFit();                        // the list just grew — re-read where the picture starts
+      return joined;
     }
 
     function verdictOnDock(cmd) {
@@ -10533,12 +10743,38 @@
       if (!cmd || cmd.kind !== "step" || !cmd.from || !cmd.to) return;   // a jump judges nothing
       const from = cmd.from.id, to = cmd.to.id;
       if (!from || !to || from === "door" || to === "door") return;   // a door is not a work
-      const rc = verdictRoadAndCues(cmd);
-      verdictPending = { from: String(from), to: String(to), road: rc.road, cues: rc.cues,
+      // The record is built FIRST and the pending row reads it, so the panel's own line and the
+      // exported step can never say two different things about one landing.
+      const joined = verdictAppendStep(cmd);
+      verdictPending = { from: String(from), to: String(to), road: verdictRoadOf(joined),
+                        cues: verdictCuesOf(joined),
                         durationMs: Math.round(passCrossingMsOf(cmd)) };
       verdictShowPending();
-      verdictAppendStep(cmd);
     }
+
+    // THE PANEL'S OWN TWO CONTROLS, REACHABLE WITHOUT IT (S-115). `d` — `в` on his own layout — is
+    // the way back for a person who put the panel out of a capture's way; the surface below is the
+    // way a capture harness drives the same two states, and the way it reads the whole chain without
+    // going through the clipboard at all.
+    addEventListener("keydown", (e) => {
+      if (e.key !== "d" && e.key !== "D" && e.key !== "в" && e.key !== "В") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      verdictSetAway(!verdictAway);
+    });
+    try {
+      const diagSurface = window.__@@NS@@Pass;
+      if (diagSurface) {
+        diagSurface.verdict = {
+          away: (on) => verdictSetAway(on === undefined ? !verdictAway : on),
+          full: (on) => verdictSetFull(on === undefined ? panel.dataset.full !== "1" : on),
+          dump: verdictDump,
+          steps: () => verdictHistory.slice(),
+          rows: () => verdictRows.slice(),
+        };
+      }
+    } catch (e) {}
 
     // `passMark` is a plain top-level binding every fragment (this one included) reaches by name,
     // and `dock` calls it as that free variable on every real landing regardless of which reference

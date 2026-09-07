@@ -94,7 +94,32 @@
       // shadow was there to draw and paints none of it outside.
       "padding:8px;border-radius:8px;max-width:280px;" +
       "box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}" +
-      "#ex-verdict .exv-info{opacity:.8;margin-bottom:6px;word-break:break-word;flex:none}" +
+      // THE TWO WORKING CONTROLS, IN THE PANEL'S OWN CORNER RATHER THAN IN ITS BUTTON ROW. The row
+      // below already carries four buttons inside 280px; two more would ellipsise «выгрузить» to
+      // nothing. These are chips over the panel's own top-right corner, and they are the two things
+      // this наряд owes a person and a capture harness alike (S-115):
+      //   ⤢ — the FULL VIEW. Compact is the default and it is right for the gap the panel lives in;
+      //       truncated is not. Full lets the panel take the whole screen and opens every step's
+      //       detail at once, which is how the whole chain is read on a 390px phone.
+      //   ✕ — OUT OF THE FRAME'S WAY. The audit measured this panel putting 6 271 pixels, worst 195
+      //       of 255, between two offers of one score at one pinned instant: any pixel reading taken
+      //       while it is up is polluted by it. Hidden it takes no layout and paints nothing, and the
+      //       hiding is STICKY — the next landing must not bring it back over the very capture it was
+      //       hidden for. It comes back on the `d` key (`в` on his own layout) or through
+      //       `window.__@@NS@@Pass.verdict.away(false)`, which is the road a harness drives.
+      "#ex-verdict .exv-tools{position:absolute;top:4px;right:4px;display:flex;gap:4px;z-index:1}" +
+      "#ex-verdict .exv-tool{padding:2px 6px;cursor:pointer;font:12px/1 system-ui,sans-serif}" +
+      "#ex-verdict[data-full=\"1\"]{left:12px;max-width:none;" +
+      "top:calc(env(safe-area-inset-top,0px) + 8px);" +
+      "max-height:calc(100dvh - env(safe-area-inset-top,0px)" +
+      // Full screen means the picture is BEHIND the panel rather than beside it, and the compact
+      // dock's .92 ground let the work read straight through the JSON. Nearly opaque here, and only
+      // here — the compact panel keeps the lighter ground it was measured on.
+      " - env(safe-area-inset-bottom,0px) - 16px);background:rgba(12,12,12,.98)}" +
+      "#ex-verdict[data-full=\"1\"] .exv-step-detail{display:block}" +
+      "#ex-verdict[data-full=\"1\"] .exv-step-sum{white-space:normal;overflow:visible}" +
+      "#ex-verdict .exv-info{opacity:.8;margin-bottom:6px;word-break:break-word;flex:none;" +
+      "padding-right:58px;min-height:16px}" +
       "#ex-verdict .exv-note{width:100%;box-sizing:border-box;margin-bottom:6px;padding:4px;" +
       "flex:none}" +
       "#ex-verdict .exv-row{display:flex;gap:6px;flex:none}" +
@@ -111,6 +136,9 @@
       "#ex-verdict[hidden]{display:none}" +
       "#ex-verdict[data-pending=\"0\"] .exv-info,#ex-verdict[data-pending=\"0\"] .exv-note," +
       "#ex-verdict[data-pending=\"0\"] .exv-btns{display:none}" +
+      // With nothing pending the info line is gone and the button row rises to the top, straight
+      // under the two corner chips — so it keeps their width clear of itself.
+      "#ex-verdict[data-pending=\"0\"] .exv-row{padding-right:58px}" +
       "#ex-verdict .exv-list{flex:1 1 auto;min-height:0;overflow-y:auto;" +
       "overscroll-behavior:contain;-webkit-overflow-scrolling:touch;margin-top:6px}" +
       "#ex-verdict .exv-list:empty{display:none}" +
@@ -163,6 +191,40 @@
     const list = document.createElement("div");
     list.className = "exv-list";
 
+    // A HIDDEN PANEL STAYS HIDDEN THROUGH THE NEXT LANDING. Without this flag `verdictShowPending`
+    // would unhide it at the very next dock, which is the one instant a capture is being taken.
+    let verdictAway = false;
+    function verdictSetAway(on) {
+      verdictAway = !!on;
+      panel.hidden = verdictAway || !verdictHistory.length;
+      if (!panel.hidden) verdictFit();
+      return verdictAway;
+    }
+    function verdictSetFull(on) {
+      panel.dataset.full = on ? "1" : "0";
+      verdictFit();
+      return panel.dataset.full === "1";
+    }
+    const tools = document.createElement("div");
+    tools.className = "exv-tools";
+    const fullBtn = document.createElement("button");
+    fullBtn.type = "button";
+    fullBtn.className = "exv-tool";
+    fullBtn.textContent = "⤢";
+    fullBtn.title = "во весь экран — вся цепочка каждого шага, без обрезания";
+    fullBtn.setAttribute("aria-label", fullBtn.title);
+    fullBtn.addEventListener("click", () => verdictSetFull(panel.dataset.full !== "1"));
+    const hideBtn = document.createElement("button");
+    hideBtn.type = "button";
+    hideBtn.className = "exv-tool";
+    hideBtn.textContent = "✕";
+    hideBtn.title = "убрать панель с кадра — вернуть клавишей d";
+    hideBtn.setAttribute("aria-label", hideBtn.title);
+    hideBtn.addEventListener("click", () => verdictSetAway(true));
+    tools.appendChild(fullBtn);
+    tools.appendChild(hideBtn);
+
+    panel.appendChild(tools);
     panel.appendChild(info);
     panel.appendChild(note);
     panel.appendChild(row);
@@ -177,6 +239,9 @@
     // last one), there is no picture edge to stop at and the stylesheet's own viewport ceiling
     // stands. Nothing is typed here: both numbers are read off the two boxes themselves.
     function verdictFit() {
+      // THE FULL VIEW IS THE ONE PLACE THE PICTURE IS NOT THE CEILING. It is asked for by hand, by a
+      // person reading the whole chain, and the stylesheet's own full-view height stands instead.
+      if (panel.dataset.full === "1") { panel.style.maxHeight = ""; return; }
       let floor = null;
       try {
         const top = panel.getBoundingClientRect().top;
@@ -203,7 +268,7 @@
     addEventListener("resize", verdictRefit);
 
     function verdictShowPending() {
-      panel.hidden = false;
+      if (!verdictAway) panel.hidden = false;
       panel.dataset.pending = verdictPending ? "1" : "0";
       info.textContent = verdictPending
         ? verdictPending.from + " → " + verdictPending.to
@@ -252,23 +317,20 @@
       } catch (e) {}
     }
 
-    // Read the passage row a landed command played, the same way `passEdgeRemember` finds it —
-    // by the identity of the score, never by re-deriving one. A declined or still-forming crossing
-    // (no score at all) reads back a bare road/cues, which is the honest answer: nothing drew.
-    function verdictRoadAndCues(cmd) {
-      if (!cmd.score) return { road: null, cues: [] };
-      for (let i = passPassages.length - 1; i >= 0; i--) {
-        const r = passPassages[i];
-        if (r.score === cmd.score || r.played === cmd.score) {
-          const cues = (r.score && Array.isArray(r.score.cues)) ? r.score.cues : [];
-          return {
-            road: r.road || null,
-            cues: cues.map((c) => String((c && c.id) || "?") + ":"
-              + String((c && c.instrument && c.instrument.id) || "?")),
-          };
-        }
-      }
-      return { road: null, cues: [] };
+    // THE ROAD AND THE CUES COME OFF THE JOINED RECORD, and off nothing else (S-115). This file used
+    // to keep its own second lookup into `passPassages` by score identity — which is exactly the
+    // lookup that comes back empty on a step the host rescued, because the score that docks then is
+    // one no passage row was ever written under. `passStepJoinedRecord` now answers that case (by
+    // generation, and off the score that actually played), so reading it here removes the second copy
+    // rather than repairing it twice. Where a rescue means there IS no composer road, the panel says
+    // where the score came from instead of showing a blank.
+    function verdictRoadOf(joined) {
+      if (!joined) return null;
+      return joined.road || (joined.played ? joined.played.source : null) || null;
+    }
+    function verdictCuesOf(joined) {
+      return (joined && Array.isArray(joined.voices) ? joined.voices : [])
+        .map((v) => String((v && v.id) || "?") + ":" + String((v && v.instrument) || "?"));
     }
 
     // Any dock that is not itself a judgeable crossing (a jump, or a landing on the door) still
@@ -300,15 +362,16 @@
     function verdictAppendStep(cmd) {
       let joined = null;
       try { joined = passStepJoinedRecord(cmd); } catch (e) {}
-      if (!joined) return;
+      if (!joined) return null;
       verdictHistory.push(joined);
       const el = document.createElement("div");
       el.className = "exv-step";
       el.dataset.open = "0";
       const sum = document.createElement("div");
       sum.className = "exv-step-sum";
+      const summaryRoad = verdictRoadOf(joined);
       sum.textContent = joined.from + " → " + joined.to
-        + (joined.road ? " · " + joined.road : "") + " · " + joined.durationMs + "мс";
+        + (summaryRoad ? " · " + summaryRoad : "") + " · " + joined.durationMs + "мс";
       const detail = document.createElement("div");
       detail.className = "exv-step-detail";
       detail.textContent = JSON.stringify(joined, null, 1);
@@ -320,6 +383,7 @@
       });
       list.appendChild(el);
       verdictFit();                        // the list just grew — re-read where the picture starts
+      return joined;
     }
 
     function verdictOnDock(cmd) {
@@ -327,12 +391,38 @@
       if (!cmd || cmd.kind !== "step" || !cmd.from || !cmd.to) return;   // a jump judges nothing
       const from = cmd.from.id, to = cmd.to.id;
       if (!from || !to || from === "door" || to === "door") return;   // a door is not a work
-      const rc = verdictRoadAndCues(cmd);
-      verdictPending = { from: String(from), to: String(to), road: rc.road, cues: rc.cues,
+      // The record is built FIRST and the pending row reads it, so the panel's own line and the
+      // exported step can never say two different things about one landing.
+      const joined = verdictAppendStep(cmd);
+      verdictPending = { from: String(from), to: String(to), road: verdictRoadOf(joined),
+                        cues: verdictCuesOf(joined),
                         durationMs: Math.round(passCrossingMsOf(cmd)) };
       verdictShowPending();
-      verdictAppendStep(cmd);
     }
+
+    // THE PANEL'S OWN TWO CONTROLS, REACHABLE WITHOUT IT (S-115). `d` — `в` on his own layout — is
+    // the way back for a person who put the panel out of a capture's way; the surface below is the
+    // way a capture harness drives the same two states, and the way it reads the whole chain without
+    // going through the clipboard at all.
+    addEventListener("keydown", (e) => {
+      if (e.key !== "d" && e.key !== "D" && e.key !== "в" && e.key !== "В") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      verdictSetAway(!verdictAway);
+    });
+    try {
+      const diagSurface = window.__@@NS@@Pass;
+      if (diagSurface) {
+        diagSurface.verdict = {
+          away: (on) => verdictSetAway(on === undefined ? !verdictAway : on),
+          full: (on) => verdictSetFull(on === undefined ? panel.dataset.full !== "1" : on),
+          dump: verdictDump,
+          steps: () => verdictHistory.slice(),
+          rows: () => verdictRows.slice(),
+        };
+      }
+    } catch (e) {}
 
     // `passMark` is a plain top-level binding every fragment (this one included) reaches by name,
     // and `dock` calls it as that free variable on every real landing regardless of which reference
