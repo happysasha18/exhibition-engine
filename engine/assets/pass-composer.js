@@ -4036,7 +4036,22 @@
             if (out[cues[k].id][lvl] === "owns" && meets(cue, cues[k])) holder = cues[k];
           }
           if (holder && drivenLevelsOf(holder).length > 1) {
-            out[holder.id][lvl] = "accompanies:" + cue.id;
+            // THE HANDOVER REPOINTS EVERY CUE ON THIS LEVEL, not only the two changing places. The
+            // first loop above wrote `accompanies:<owner>` on every other cue standing on `lvl`, and
+            // those sentences all name the OLD owner. Rewriting two of them leaves the rest naming a
+            // cue that no longer owns anything here, and the record then contradicts the law it is
+            // published to state: on one structural level, one owner, and every other cue on that
+            // level names the owner it accompanies there.
+            //
+            // Found 2026-09-07 on one of the constructed corpus's own pair cases, where a three-cue
+            // score handed SURFACE from `pivot` to `travel` and left `arrival` still naming `pivot`.
+            // It has been invisible since f5ca9e6 took away the gate that read this record, and it
+            // is record-only: the sole reader asks whether a level says `owns` and never follows the
+            // name, so no picture ever changed. A published record that is false on its face is
+            // still false.
+            for (k = 0; k < cues.length; k++) {
+              if (out[cues[k].id][lvl]) out[cues[k].id][lvl] = "accompanies:" + cue.id;
+            }
             out[cue.id][lvl] = "owns";
             break;
           }

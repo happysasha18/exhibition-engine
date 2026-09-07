@@ -60,7 +60,6 @@ which also keeps this suite safe to run beside the others under tests/run_all.py
 import base64
 import hashlib
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -72,6 +71,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 import engine_build as build_site  # noqa: E402
 import build as _engine  # noqa: E402  — engine/build.py, already on sys.path via engine_build
+import synthetic_works  # noqa: E402
 from headless import serve, Browser, chrome_available  # noqa: E402
 
 PHOTOS = [Path("/Users/sashaabramovich/tlvphotos/lab/photos/towers.jpg"),
@@ -335,11 +335,142 @@ def one_cue():
 build_site.SITE_CONFIG = dict(build_site.SITE_CONFIG)
 build_site.SITE_CONFIG["pass"] = {"visualLayer": "pass", "diagnostics": "on"}
 
-# WHERE THE LEVELS LAW IS ENFORCED SINCE 2026-08-14 — the composition gate over the authored plans,
-# in the tlvphotos tree, which is READ ONLY here. Absent, row 4 is a pinned SKIP naming this path,
-# which is the same shape the lab-module rows in test_pass_weave.py use.
-GATE = Path(os.environ.get("TLVPHOTOS_SCENEPLAN_ROOT",
-                           "/Users/sashaabramovich/tlvphotos-sceneplan/lab")) / "sceneplan-build-check.py"
+# WHERE THE LEVELS LAW IS ENFORCED, AND WHERE ROW 4 NOW READS IT.
+#
+# The law left the host on 2026-08-14 for the reason written out at row 4's own site below: it is a
+# law about how a passage is COMPOSED, decidable from the authored plan and needing nothing from a
+# live frame. From that day until 2026-09-07 this row read the source of the composition gate that
+# authored plans at site-build time, `lab/sceneplan-build-check.py` in a tlvphotos worktree. Site
+# commit f5ca9e6 — «The second composer and every crossing it stored are gone; a crossing is composed
+# at the moment two works meet» — deleted that second composer, and with it the tree this path names.
+# The row has been abstaining ever since on a file nobody was going to restore, which is a row
+# reporting green over a law it never checked.
+#
+# THE PLAN IS STILL AUTHORED, and it is authored by `engine/assets/pass-composer.js` at the instant
+# two works meet. So the row runs that composer over ordered pairs of constructed WorkRecords from
+# `tests/synthetic_works.py` and reads the law off the plans it actually authors — for every level
+# any cue holds, that cue either owns it or names the cue that owns it there. Nothing in the walk
+# names a photograph, and nothing in it grows when the collection does.
+#
+# WHAT THIS ROW DOES NOT CLAIM, so that it does not pretend to a proof that lives elsewhere: that no
+# two cues whose windows overlap can both own one level. That guarantee belongs to `ownTheLevels`
+# itself and is proven by construction, with its own planted defect, in tests/test_pass_levels.py
+# (PASS-09). This row reads the OUTPUT the composer publishes for real pairs, which is the half the
+# deleted gate held.
+COMPOSER_MODULE = ROOT / "engine" / "assets" / "pass-composer.js"
+FIXTURE_COMPOSED = ROOT / "tests" / "fixture_pass_composed.json"
+
+
+def node_available():
+    try:
+        return subprocess.run(["node", "--version"], capture_output=True).returncode == 0
+    except Exception:
+        return False
+
+
+# The driver's own ceiling, sized the way tests/test_pass_reads.py sizes its own: the lone-run cost
+# of this walk, measured at 1.0 s on 2026-09-07, against tests/run_all.py's declared `--jobs 8`, so a
+# walk sharing the host with seven other suites still finishes and a walk that truly hangs still ends.
+LEVELS_TIMEOUT_S = 1.0 * 8
+
+LEVELS_DRIVER = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm");
+const [composerPath, fixPath, worksPath] = process.argv.slice(2);
+let joined = null;
+const sandbox = {window: {}, console: {log: () => {}, warn: () => {}, error: () => {}}};
+sandbox.window.__PassComposer = (m) => { joined = m; };
+vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(composerPath, "utf8").replace(/@@NS@@/g, ""), sandbox,
+                {filename: composerPath});
+if (!joined) { console.log(JSON.stringify({error: "the composer joined nothing"})); process.exit(0); }
+const fix = JSON.parse(fs.readFileSync(fixPath, "utf8"));
+const data = JSON.parse(fs.readFileSync(worksPath, "utf8"));
+const composer = joined.make(fix.consts);
+// One die for one walk, the seed the corpus is walked at in tests/test_pass_reads.py and
+// tests/test_pass_weave.py, so a repeat of this suite authors the same plans.
+const SEED = 3.3;
+const out = [];
+for (const c of data.pairs) {
+  const a = c[0], b = c[1], dir = c[2];
+  let p;
+  try {
+    p = composer.passageFor({workRecordA: data.works[a], workRecordB: data.works[b],
+                             direction: dir, seed: SEED, routeRole: "middle"});
+  } catch (e) { continue; }
+  if (!p || !p.plan || !p.plan.cues) continue;
+  out.push({pair: [a, b, dir],
+            cues: p.plan.cues.map((cue) => ({id: cue.id, levels: cue.levels || [],
+                                             ownership: cue.levelOwnership || null}))});
+}
+console.log(JSON.stringify({passages: out}));
+"""
+
+
+def composed_plans():
+    """The plans the shipped composer authors for the constructed corpus's own ordered pairs, or
+    {"error": ...} naming what went wrong — so a row that could not be run reads as a stated failure
+    rather than a silent pass."""
+    d = Path(tempfile.mkdtemp(prefix="synth_stacklevels_"))
+    try:
+        (d / "driver.js").write_text(LEVELS_DRIVER, encoding="utf-8")
+        (d / "works.json").write_text(
+            json.dumps({"works": synthetic_works.corpus(), "pairs": synthetic_works.pairs()}),
+            encoding="utf-8")
+        proc = subprocess.run(["node", str(d / "driver.js"), str(COMPOSER_MODULE),
+                               str(FIXTURE_COMPOSED), str(d / "works.json")],
+                              capture_output=True, text=True, timeout=LEVELS_TIMEOUT_S)
+        if proc.returncode != 0:
+            return {"error": (proc.stderr or "").strip()[-400:]}
+        lines = proc.stdout.strip().splitlines()
+        if not lines:
+            return {"error": "the levels driver printed nothing"}
+        return json.loads(lines[-1])
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+PLANS = composed_plans() if node_available() else {"error": "node is not installed"}
+
+
+def levels_law():
+    """Every breach of the levels law in the plans above, as sentences, with the two counts that say
+    the walk was not vacuous: how many levels were held by more than one cue of one passage, and how
+    many holders named an owner they accompany there."""
+    bad, shared, accompanied = [], 0, 0
+    for passage_ in PLANS.get("passages", []):
+        cues = passage_["cues"]
+        owners, holders = {}, {}
+        for cue in cues:
+            if cue["ownership"] is None:
+                bad.append("%s: cue %s carries no level record at all"
+                           % (passage_["pair"], cue["id"]))
+                continue
+            for level, held in cue["ownership"].items():
+                holders.setdefault(level, []).append(cue["id"])
+                if held == "owns":
+                    owners.setdefault(level, []).append(cue["id"])
+                elif not str(held).startswith("accompanies:"):
+                    bad.append("%s: cue %s holds %s as «%s», which is neither owning nor "
+                               "accompanying" % (passage_["pair"], cue["id"], level, held))
+            for level in cue["levels"]:
+                if level not in cue["ownership"]:
+                    bad.append("%s: cue %s declares %s and holds no record of who owns it there"
+                               % (passage_["pair"], cue["id"], level))
+        for cue in cues:
+            for level, held in (cue["ownership"] or {}).items():
+                if not str(held).startswith("accompanies:"):
+                    continue
+                accompanied += 1
+                named = str(held).split(":", 1)[1]
+                if named not in owners.get(level, []):
+                    bad.append("%s: cue %s accompanies %s on %s, and %s does not own it"
+                               % (passage_["pair"], cue["id"], named, level, named))
+        shared += sum(1 for level in holders if len(holders[level]) > 1)
+    return bad, shared, accompanied
+
 
 TMP = Path(tempfile.mkdtemp(prefix="synth_passstack_"))
 build_site.OUT = TMP
@@ -791,25 +922,34 @@ else:
                 # passage is composed and needs nothing from a live frame. It never needed an
                 # allow-list that was not there to hold it up.
                 #
-                # This row reads that gate's own source, the way the browser rows above read the
-                # lab modules: the per-level reading that gathers each level's holders, requires
-                # every declared level to be owned or accompanied, and refuses two owners of one
-                # level. A row that merely asserted the host no longer checks would prove the check
-                # was deleted and say nothing about whether the law survived the move.
+                # This row reads the law off the plans the SHIPPED composer actually authors, the
+                # way the browser rows above read a drawn frame rather than a sentence about one. A
+                # row that merely asserted the host no longer checks would prove the check was
+                # deleted and say nothing about whether the law survived the move. See the note at
+                # COMPOSER_MODULE above for where the row used to read, and why that path is gone.
                 three_ok = js(br, "return window.__whyNo(%s);" % SCORE)
-                if not GATE.exists():
-                    skip(BROWSER_ROWS[4], "the composition gate is not on this machine: %s" % GATE)
+                if PLANS.get("error"):
+                    check(BROWSER_ROWS[4], False,
+                          "the shipped composer could not be run here, so the law it settles could "
+                          "not be read: %s" % PLANS["error"])
                 else:
-                    gate = GATE.read_text(encoding="utf-8")
+                    breaches, shared_levels, accompaniments = levels_law()
                     check(BROWSER_ROWS[4],
-                          three_ok is None
-                          and 'c.get("levelOwnership")' in gate
-                          and '"owns"' in gate
-                          and 'for lv in sorted(' in gate,
+                          three_ok is None and not breaches
+                          and len(PLANS["passages"]) > 0 and shared_levels > 0
+                          and accompaniments > 0,
                           "the host takes the composed passage without a word about levels (%r), "
-                          "because the law is checked over the authored plan at build time. Its "
-                          "home is %s, which reads each level's holders and refuses two owners of "
-                          "one level." % (three_ok, GATE))
+                          "because the law is settled where the plan is authored — in "
+                          "engine/assets/pass-composer.js, at the instant two works meet. Read off "
+                          "the plans it authors for the %d ordered pair cases of the constructed "
+                          "corpus: every level any cue holds is either owned by that cue or names "
+                          "the cue that owns it there, over %d level(s) held by more than one cue "
+                          "of one passage and %d holder(s) naming an owner they accompany."
+                          % (three_ok, len(PLANS["passages"]), shared_levels, accompaniments)
+                          if not breaches else
+                          "the host takes the composed passage without a word about levels (%r); "
+                          "the composer's own plans break the law %d time(s): %s"
+                          % (three_ok, len(breaches), "; ".join(breaches[:4])))
 
                 # ---- row 5: the tier budget --------------------------------------------------
                 b = js(br, "return window.__budget(%s);" % SCORE)

@@ -21,13 +21,35 @@ WHAT IS COMPARED, AND AGAINST WHAT.
 
   Three bands. The count the lowered floors exist for, on the worked pair's own two works and on
   both frames it has to hold on: a handle of 3 on 1440 px and a handle of 6 on the 390 px phone,
-  each drawing three bands. The two roads are compared there as well, and the drawn frame is read
+  each drawing three bands. This one is asked of the SHIPPED instrument alone — the lab module
+  cannot be brought to it, for the reason written at BAND_ROWS below — and the drawn frame is read
   by the collection's own banding measure (lab/cut-lines.py, imported) to say where the band family
-  actually lands — 1440 / 3 is the pair's own period of 480 px, and 390 / 3 is 130 px.
+  actually lands: 1440 / 3 is the pair's own period of 480 px, and 390 / 3 is 130 px.
 
   The lab tree is READ ONLY and is found at $TLVPHOTOS_LAB_ROOT, defaulting to the immersive
   worktree's lab. Absent, every browser row here is a pinned SKIP that names the missing path —
   never a silent pass.
+
+WHERE THE SCORE COMES FROM, AND WHY IT IS NO LONGER A FILE.
+
+  Every row below that offers this instrument a score used to read one off disk:
+  lab/data/scores/17847744487144891__17897050660015868.json — a stored score keyed by an ordered
+  PAIR of work ids. His word of 2026-08-17 19:21 retired that whole shape, and site commit e25bbc8
+  («Nothing on disk carries a row per pair of works any more; what two photographs share is worked
+  out when they meet») deleted the directory and the builder that wrote it. From then until
+  2026-09-07 this suite went on asking for the file, found it absent, and abstained on all
+  thirty-nine of its browser rows — reporting green over rows that never ran, because a SKIP is an
+  abstention and not a pass.
+
+  The score is now COMPOSED, by the shipped `engine/assets/pass-composer.js`, for a pair of
+  constructed WorkRecords out of `tests/synthetic_works.py` — the same fixed corpus of boundary
+  values and behaviour classes `tests/test_pass_composed.py` and `tests/test_pass_reads.py` stand
+  on. Nothing in it names a photograph and nothing in it grows when the collection does. The pair is
+  not chosen by hand either: the walk takes the FIRST case of `synthetic_works.pairs()` whose
+  composed passage names the woven instrument and names nothing else, so the rows that count what
+  the host made — one programme, two textures, one pass a frame — are counting this instrument
+  alone. What reaches the host is the composer's own serialised `json`, byte for byte the string a
+  visitor's browser is handed.
 """
 import base64
 import hashlib
@@ -36,6 +58,7 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -43,6 +66,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 import engine_build as build_site  # noqa: E402
+import synthetic_works  # noqa: E402
 from headless import serve, Browser, chrome_available  # noqa: E402
 
 LAB = Path(os.environ.get("TLVPHOTOS_LAB_ROOT", "/Users/sashaabramovich/tlvphotos/lab"))
@@ -62,7 +86,12 @@ PAIR_WORKS = [Path("/Users/sashaabramovich/tlvphotos/gallery/assets/"
 # two numbers above off the two photographs. A copy could drift from the number the pair was judged
 # by, which is the same rule lab/weave-bands-measure.py states for itself.
 CUT_LINES = LAB / "cut-lines.py"
-SCORE = LAB / "data" / "scores" / "17847744487144891__17897050660015868.json"
+
+# THE COMPOSER THAT SHIPS, AND THE CONSTANTS IT IS MADE WITH. Read out of the engine's own assets
+# rather than out of a bake, so the score every row below is offered is composed by exactly the file
+# a visitor's browser fetches.
+COMPOSER_MODULE = ROOT / "engine" / "assets" / "pass-composer.js"
+FIXTURE_COMPOSED = ROOT / "tests" / "fixture_pass_composed.json"
 
 SITE_URL = "https://synth.example.com"
 VW, VH = 390, 844          # the phone frame lab/carrier-check.py measures on
@@ -82,35 +111,180 @@ def skip(name, detail):
     results.append((name, "SKIP", detail))
 
 
+def node_available():
+    try:
+        return subprocess.run(["node", "--version"], capture_output=True).returncode == 0
+    except Exception:
+        return False
+
+
+# THE COMPOSE DRIVER'S OWN CEILING. The walk below runs the shipped composer over the corpus's own
+# ordered pair cases in ONE node process and stops at the first pair that names the woven instrument
+# alone; a lone run of it measured 1.0 s on 2026-09-07. tests/run_all.py's own default is `--jobs 8`,
+# so under the gate that work shares the host with seven other suites, and the ceiling is that
+# measured cost against the runner's own declared job count — both numbers already written down. A
+# driver that truly hangs still ends here rather than never.
+COMPOSE_TIMEOUT_S = 1.0 * 8
+
+# THE ONE WALK THAT COMPOSES WHAT THIS SUITE PLAYS. It answers two questions in one node process,
+# because both are questions about what the shipped composer emits for constructed works:
+#
+#   · THE SCORE. The first ordered pair case of `synthetic_works.pairs()` whose composed passage
+#     carries exactly one cue and that cue is the woven instrument. The score handed back is the
+#     composer's own `json` — the serialised string a visitor's browser is handed — so nothing this
+#     file does can reshape it on the way.
+#   · THE BANDING AXIS AS THE COMPOSER ENCODES IT. For every pair whose passage names the woven
+#     instrument, the value the composer put on that cue's `axis` node, beside the banding axis each
+#     of the two constructed works actually carries. The row below reads the encoding off those
+#     answers rather than off a sentence anybody typed.
+COMPOSE_DRIVER = r"""
+"use strict";
+const fs = require("fs"), vm = require("vm");
+const [composerPath, fixPath, worksPath] = process.argv.slice(2);
+let joined = null;
+const sandbox = {window: {}, console: {log: () => {}, warn: () => {}, error: () => {}}};
+sandbox.window.__PassComposer = (m) => { joined = m; };
+vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync(composerPath, "utf8").replace(/@@NS@@/g, ""), sandbox,
+                {filename: composerPath});
+if (!joined) { console.log(JSON.stringify({error: "the composer joined nothing"})); process.exit(0); }
+const fix = JSON.parse(fs.readFileSync(fixPath, "utf8"));
+const data = JSON.parse(fs.readFileSync(worksPath, "utf8"));
+const works = data.works, pairs = data.pairs;
+const composer = joined.make(fix.consts);
+// The seed the whole corpus is walked at in tests/test_pass_reads.py, carried here for the same
+// reason: one die for one walk, so a repeat of this suite composes the same passage.
+const SEED = 3.3;
+let alone = null;
+const axis = [];
+for (const c of pairs) {
+  const a = c[0], b = c[1], dir = c[2];
+  let p;
+  try {
+    p = composer.passageFor({workRecordA: works[a], workRecordB: works[b], direction: dir,
+                             seed: SEED, routeRole: "middle"});
+  } catch (e) { continue; }
+  if (!p || !p.score) continue;
+  const cues = p.score.cues || [];
+  const woven = cues.filter((c2) => c2.instrument && c2.instrument.id === "weave");
+  if (!woven.length) continue;
+  const node = woven[0].nodes[((woven[0].tracks || {}).axis || {}).node];
+  if (node && typeof node.value === "number") {
+    axis.push({a: a, b: b, dir: dir, value: node.value,
+               bandingA: works[a].structure.banding.axis,
+               bandingB: works[b].structure.banding.axis});
+  }
+  if (!alone && cues.length === 1) {
+    alone = {a: a, b: b, dir: dir, json: p.json, cue: woven[0].id};
+  }
+}
+console.log(JSON.stringify({alone: alone, axis: axis}));
+"""
+
+
+def compose():
+    """Runs the walk above under a real `node` and returns its answer, or {"error": ...} naming what
+    went wrong — so a row that could not be composed reads as a stated failure rather than a silent
+    pass. Same shape as tests/test_pass_reads.py's own driver runner."""
+    d = Path(tempfile.mkdtemp(prefix="synth_weavecompose_"))
+    try:
+        (d / "driver.js").write_text(COMPOSE_DRIVER, encoding="utf-8")
+        (d / "works.json").write_text(
+            json.dumps({"works": synthetic_works.corpus(), "pairs": synthetic_works.pairs()}),
+            encoding="utf-8")
+        proc = subprocess.run(["node", str(d / "driver.js"), str(COMPOSER_MODULE),
+                               str(FIXTURE_COMPOSED), str(d / "works.json")],
+                              capture_output=True, text=True, timeout=COMPOSE_TIMEOUT_S)
+        if proc.returncode != 0:
+            return {"error": (proc.stderr or "").strip()[-400:]}
+        lines = proc.stdout.strip().splitlines()
+        if not lines:
+            return {"error": "the compose driver printed nothing"}
+        return json.loads(lines[-1])
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+COMPOSED = compose() if node_available() else {"error": "node is not installed"}
+COMPOSED_WHY = (COMPOSED.get("error")
+                or (None if COMPOSED.get("alone") else
+                    "no ordered pair case of the constructed corpus composes a passage naming the "
+                    "woven instrument alone"))
+
+
 def score_of():
-    return json.loads(SCORE.read_text(encoding="utf-8"))["score"]
+    """The score the shipped composer emits for a constructed pair, parsed out of its own serialised
+    `json`. One fresh copy per call, because every caller below edits the one it is handed."""
+    return json.loads(COMPOSED["alone"]["json"])
 
 
 def scored(pair_a="a", pair_b="b"):
-    """The lab's own score for this pair, with every handle the generator left untracked wired up.
+    """That composed score, with the two work slots named for whatever the caller is arming.
 
-    build-scores-v1.py names only `mix` and `clock` in tracks because module-contract.json publishes
-    only those two; the port publishes NINE (§4.4b), so the strips, the axis, the speed, the die and
-    the three voices that used to run on the module's own eased clock all reach the instrument
-    instead of falling back to a default.
+    NOTHING ELSE IS ADDED, and that is the change of 2026-09-07. The generator this suite used to
+    read wrote only `mix` and `clock` into `tracks`, because lab/module-contract.json published only
+    those two, so this file had to wire the other seven handles up by hand before a row could claim
+    the instrument was driven rather than resting on its defaults. The shipped composer publishes all
+    twelve — the strips, the axis, the speed, the die, the press, the strip-count multiplier and the
+    ribbon's three wave handles — each with the measurement it was placed from written on the node's
+    own `note`. A hand-written track laid over that would be this file overruling the composer and
+    then proving its own arithmetic back to itself.
 
-    THE FOUR STATICS are nodes the generator already put in the file, and it now writes their tracks
-    too, so re-stating them here changes nothing — it only keeps this file honest against a score
-    written before it did. Nothing there is invented.
-    THE TWO VOICES are the module's own numbers, carried digit for digit out of lab/effects/weave.js:
-    the strip-count breath 1 + 0.35·sin(t·0.021·TAU + 1.1) (weave.js:452) and the press resting at 1
-    under a parked pointer (weave.js:466 with :236). They stand here as driver nodes rather than as
-    constants inside the instrument, which is what makes the seeded repeat below mean anything.
-
-    `bal` is deliberately NOT tracked: the balance drift is the module's IDLE life, and this score's
-    intent is the crossing, where the dial owns the balance. A score that wants the drift names
-    `tracks.bal` and the node is written out in this build's return."""
+    `bal` is deliberately NOT tracked, by the composer and by this file alike: the balance is the
+    open handle the dial owns through a crossing. A row that needs a door at a stated balance names
+    `tracks.bal` itself, which is what `balanced` below does and the only way a score reaches it."""
     s = score_of()
     s["pair"] = {"a": pair_a, "b": pair_b}
+    return s
+
+
+def balanced(bal, pair_a="a", pair_b="b", strips=None):
+    """The same score with the OPEN handle driven — the one case in which a door of this instrument
+    can stand at a balance other than the one the response curve puts it at. `bal` is open by
+    declaration (`open: true` in the manifest), so a score that names a track for it wins over the
+    dial, and at a door the fabric then leaves a share of every band to the other work. That is the
+    door this lane's reading is about, and this is the only way a score reaches it.
+
+    WHY A ROW ABOUT A REFUSED DOOR ALSO NAMES `strips`. The instrument holds a leaking door at the
+    fabric's own whole band wherever one stands within DOOR_HOLD = 2 bands of the balance handed in
+    (pass-inst-weave.js:718), and the share a balance leaves open is a share of EVERY band — so the
+    distance in bands is that share times the count drawn. On this 390-point frame the composed
+    score's own measured family draws the instrument's floor of three bands, at which a balance of a
+    half stands 0.69 of a band from whole: every balance is inside the hold, no door can be refused,
+    and a row about a refusal has nothing to read. Naming the instrument's own declared default of
+    28 puts the count at fourteen bands on the same frame, where a half stands 3.24 bands out and
+    the refusal the row is about is reachable. It is the handle's own published default, not a
+    number chosen here, and only the rows about a REFUSAL name it."""
+    s = scored(pair_a, pair_b)
     cue = s["cues"][0]
-    cue["nodes"]["axisStatic"] = {"op": "static", "value": 0,
-                                  "note": "walk-v1.json steps[0].axis is 'up and down' = index 0, "
-                                          "the same fact rotStatic 0 records"}
+    cue["nodes"]["balStatic"] = {"op": "static", "value": bal,
+                                 "note": "the open handle driven flat, so the door stands where "
+                                         "this number puts it rather than where the dial does"}
+    cue["tracks"]["bal"] = {"node": "balStatic"}
+    if strips is not None:
+        cue["nodes"]["stripsAlt"] = {"op": "static", "value": strips}
+        cue["tracks"]["strips"] = {"node": "stripsAlt"}
+    return s
+
+
+def coupled(pair_a="a", pair_b="b"):
+    """ONE NODE FEEDING TWO CHANNELS — the fifth law of the grammar, on the real instrument. One
+    breath drives the strip count AND the press, so the two cannot disagree; the row reads both
+    handles off the diagnostic surface and solves them back to the single value they came from.
+
+    THE BREATH IS AUTHORED HERE AND NOWHERE ELSE, because the law is about the graph and not about
+    this instrument's own taste. The composed score drives `nMul` and `press` from the crossing's own
+    progress, each off a node of its own, which is the right thing for a passage and the wrong shape
+    for this row: two nodes cannot prove that one node reaches two channels. So this score replaces
+    both tracks with the single oscillator below and the two expressions that read it.
+
+    Its two numbers are the module's own, carried digit for digit out of lab/effects/weave.js: the
+    strip-count breath 1 + 0.35·sin(t·0.021·TAU + 1.1) (weave.js:452) and the press resting at 1
+    under a parked pointer (weave.js:466 with :236)."""
+    s = scored(pair_a, pair_b)
+    cue = s["cues"][0]
     cue["nodes"]["breath"] = {"op": "oscillate", "rate": 0.021, "phase": 1.1, "shape": "sin",
                               "in": {"source": "time"},
                               "note": "lab/effects/weave.js:452 — the strip-count drift's own rate "
@@ -119,43 +293,11 @@ def scored(pair_a="a", pair_b="b"):
                                                      {"op": "multiply",
                                                       "in": [{"op": "static", "value": 0.35},
                                                              {"node": "breath"}]}]}
-    cue["nodes"]["pressStatic"] = {"op": "static", "value": 1,
-                                   "note": "weave.js:466 — the press rests at 1 under a parked "
-                                           "pointer, and a scored run parks it"}
-    cue["tracks"]["strips"] = {"node": "stripsStatic"}
-    cue["tracks"]["speed"] = {"node": "speedStatic"}
-    cue["tracks"]["seed"] = {"node": "seedStatic"}
-    cue["tracks"]["axis"] = {"node": "axisStatic"}
-    cue["tracks"]["nMul"] = {"node": "nMulDrive"}
-    cue["tracks"]["press"] = {"node": "pressStatic"}
-    return s
-
-
-def balanced(bal, pair_a="a", pair_b="b"):
-    """The same score with the OPEN handle driven — the one case in which a door of this instrument
-    can stand at a balance other than the one the response curve puts it at. `bal` is open by
-    declaration (`open: true` in the manifest), so a score that names a track for it wins over the
-    dial, and at a door the fabric then leaves a share of every band to the other work. That is the
-    door this lane's reading is about, and this is the only way a score reaches it."""
-    s = scored(pair_a, pair_b)
-    cue = s["cues"][0]
-    cue["nodes"]["balStatic"] = {"op": "static", "value": bal,
-                                 "note": "the open handle driven flat, so the door stands where "
-                                         "this number puts it rather than where the dial does"}
-    cue["tracks"]["bal"] = {"node": "balStatic"}
-    return s
-
-
-def coupled(pair_a="a", pair_b="b"):
-    """ONE NODE FEEDING TWO CHANNELS — the fifth law of the grammar, on the real instrument. The one
-    breath above drives the strip count AND the press, so the two cannot disagree; the row reads both
-    handles off the diagnostic surface and solves them back to the single value they came from."""
-    s = scored(pair_a, pair_b)
-    cue = s["cues"][0]
     cue["nodes"]["pressDrive"] = {"op": "add", "in": [
         {"op": "static", "value": 1},
         {"op": "multiply", "in": [{"op": "static", "value": 0.30},
                                   {"op": "clamp", "in": {"node": "breath"}, "min": 0, "max": 1}]}]}
+    cue["tracks"]["nMul"] = {"node": "nMulDrive"}
     cue["tracks"]["press"] = {"node": "pressDrive"}
     return s
 
@@ -165,10 +307,11 @@ def with_statics(strips=None, nMul=None, press=None, pair_a="a", pair_b="b"):
     the diagnostic record — reading a driver's value back off the surface says the graph evaluated,
     and says nothing about whether the instrument obeyed it.
 
-    `strips` is raised to 28, the module's own declared default, for these runs alone: this pair's
-    score names 8, and on a 390-point frame the count lands at clamp(8 * nMul * 0.5, 6, 64), whose
-    floor of 6 swallows most of the breath's range. At 28 the same range moves the count from about
-    ten strips to about twenty, which is the difference the row is trying to see."""
+    `strips` is raised to 28, the module's own declared default, for these runs alone: the composed
+    score names the band family it measured on the constructed pair, which is a handful of strips,
+    and on a 390-point frame the count lands at clamp(strips * nMul * 0.5, 3, 64), whose floor
+    swallows the whole of the breath's range at so few. At 28 the same range moves the count from
+    about ten strips to about twenty, which is the difference the row is trying to see."""
     s = scored(pair_a, pair_b)
     cue = s["cues"][0]
     if strips is not None:
@@ -333,21 +476,45 @@ check("PASS-WEAVE the ribbon axis publishes three named states, their band direc
       "of which only «both» answers the clock; the published names, the band direction each stands "
       "for and the 27 s turn all read off the lines above")
 
-# The other half of the same fact lives in the tree that MEASURES the band family. A row here keeps
-# the two vocabularies tied together: the day the composer's encoding flips, this reds in the engine.
-SCENEPLAN = LAB / "build-sceneplan-v1.py"
-if SCENEPLAN.exists():
-    _plan = SCENEPLAN.read_text(encoding="utf-8")
-    check("PASS-WEAVE the axis handle's 0 and 1 are the banding measure's own vertical and horizontal",
-          '0 if e["axis"] == "vertical" else 1' in _plan
-          and '"axis: 0 vertical, 1 horizontal"' in _plan,
-          "the composer encodes a measured vertical family as 0 and a horizontal one as 1, which is "
-          "the same pair the shader draws at uRot 0 and uRot 1")
+# The other half of the same fact belongs to whoever WRITES the number onto the handle. Until
+# 2026-09-07 this row read it out of lab/build-sceneplan-v1.py, the second composer that authored
+# plans at site-build time; site commit f5ca9e6 («The second composer and every crossing it stored
+# are gone; a crossing is composed at the moment two works meet») deleted that file, and the row has
+# been abstaining ever since on a path nobody was going to restore.
+#
+# THE ENCODING DID NOT GO WITH IT. It moved into the composer that ships — pass-composer.js:6584
+# reads `e.axis === "vertical" ? 0 : 1` and :1435 publishes the sentence a composer author reads,
+# «axis: 0 vertical, 1 horizontal» — and that is where this row now stands. It is stronger than the
+# grep it replaces: the numbers are the ones the RUNNING composer actually put on the woven cue's
+# axis node for constructed pairs, one whose two works both band vertically and one whose two both
+# band horizontally, so a wiring that typed the sentence and encoded the other way reds here.
+AXIS_ROW = ("PASS-WEAVE the axis handle's 0 and 1 are the banding measure's own vertical and "
+            "horizontal, as the shipped composer writes them")
+COMPOSER_SRC = COMPOSER_MODULE.read_text(encoding="utf-8")
+if COMPOSED_WHY:
+    skip(AXIS_ROW, "the shipped composer could not be run here: " + COMPOSED_WHY)
 else:
-    skip("PASS-WEAVE the axis handle's 0 and 1 are the banding measure's own vertical and horizontal",
-         f"the lab tree is absent at {SCENEPLAN}")
+    _upright = [c for c in COMPOSED["axis"]
+                if c["bandingA"] == "vertical" and c["bandingB"] == "vertical"]
+    _across = [c for c in COMPOSED["axis"]
+               if c["bandingA"] == "horizontal" and c["bandingB"] == "horizontal"]
+    check(AXIS_ROW,
+          bool(_upright) and bool(_across)
+          and all(c["value"] == 0 for c in _upright)
+          and all(c["value"] == 1 for c in _across)
+          and 'e.axis === "vertical" ? 0 : 1' in COMPOSER_SRC
+          and '"axis: 0 vertical, 1 horizontal"' in COMPOSER_SRC,
+          "the composer encodes a measured vertical family as 0 and a horizontal one as 1, which is "
+          "the same pair the shader draws at uRot 0 and uRot 1. Composed over the constructed "
+          "corpus: %d pair(s) whose two works both band vertically, and the composer wrote %s onto "
+          "the woven cue's axis node; %d whose two both band horizontally, and it wrote %s"
+          % (len(_upright), sorted({c["value"] for c in _upright}) or "nothing",
+             len(_across), sorted({c["value"] for c in _across}) or "nothing"))
 
 _pub = re.search(r"strips: \{ min: (\d+), max: (\d+), def: (\d+),", WEAVE)
+# The band count the handle itself rests at, read off the built instrument rather than retyped. The
+# door-refusal rows below hand it to `balanced` for the reason written there.
+DOOR_STRIPS = int(_pub.group(3)) if _pub else None
 _app = re.search(r"applied: \{ floor: (\d+), ceiling: (\d+), timesHandle: \"nMul\",\s*"
                  r"frameWidth: \{ full: (\d+), least: ([\d.]+) \},\s*"
                  r"drawnFloor: (\d+), basketTakes: ([\d.]+) \}", WEAVE)
@@ -491,16 +658,32 @@ RED_ROWS = [
 # stands on could be REACHED at all; before it, a handle of 3, 4, 5, 6 or 8 all drew six bands. The
 # rows above hold the instrument against the lab module on the poses the carrier check already used,
 # and not one of them asks for three bands, so the pose the whole change exists for went unmeasured.
-# These four rows are that pose: the module driven to it through its own handles, the host handed
-# the pose the module settled on, and the drawn frame read by the collection's own banding measure
-# on the worked pair's own two works — on a 1440 px frame, where three bands is the pair's own
-# period of 480 px, and on the 390 px phone frame, where a handle of 6 is what puts three bands on
-# the glass and the peak tracks the count row for row.
+# These two rows are that pose: the shipped instrument driven to it, and the drawn frame read by the
+# collection's own banding measure on the worked pair's own two works — on a 1440 px frame, where
+# three bands is the pair's own period of 480 px, and on the 390 px phone frame, where a handle of 6
+# is what puts three bands on the glass and the peak tracks the count row for row.
+#
+# THE TWO ROWS THAT STOOD HERE AND HELD THE HOST'S THREE-BAND FRAME AGAINST THE LAB MODULE'S ARE
+# GONE, 2026-09-07, AND THEY CANNOT BE REPAIRED. Both were pure parity — one drawn frame against the
+# other at a request of three bands — and the lab module cannot be brought to that pose at all: its
+# own `strips` handle floors the request at eight (lab/effects/weave.js:703, `clamp(+value, 8, 64)`)
+# and its own band count floors at six (:324, `clamp(..., 6, 64)`), which are two of the very four
+# floors the shipped instrument lowered to three so that a measured family of three could be reached
+# — the row above this one reads all four and holds them at 3, 3, 3 and 3. So the second road never
+# draws three bands, and asking whether the two roads agree there asks whether one implementation
+# matches another at a pose the other refuses to take. Run standalone on 2026-09-07 they read
+# exactly that: at a request of three on 1440 px both roads drew EIGHT, and at a request of six on
+# 390 px the host drew four against the module's six with the two frames 53.65 of 255 apart.
+#
+# WHAT SURVIVES OF THEIR INTENT is the two rows below, which no longer ask a second implementation
+# anything. They drive the SHIPPED instrument to the pose, read the count off its own numbers, and
+# read the drawn frame with the collection's own banding measure — so what is judged is where the
+# band family the passage stands on actually lands on the glass, which is the thing the lowered
+# floors were lowered for. The three poses at the head of this suite and the wave's two ends still
+# hold the two roads against each other, because those are poses the module can take.
 BAND_ROWS = [
     "PASS-WEAVE three bands · 1440 wide: a request of three draws three, and the drawn frame's band family lands on the frame's own third",
-    "PASS-WEAVE three bands · 1440 wide: the host's frame and the lab module's frame agree",
     "PASS-WEAVE three bands · 390 wide: a request of three draws three, and the drawn frame's band family lands on the frame's own third",
-    "PASS-WEAVE three bands · 390 wide: the host's frame and the lab module's frame agree",
 ]
 
 # §2.5's landing slack. The host's own force-end is a timer at the score's `withinMs`; a browser
@@ -532,8 +715,19 @@ WALK_ROWS = [
 # own records at the instant the walk casts the pair, and the family roll they proved is now the
 # die the walk rolls per crossing (§4.4f is unchanged and passBreath still holds it).
 
-missing = [str(p) for p in ([SCORE] + PHOTOS + [LAB / "effects" / "weave.js"])
-           if not p.exists()]
+# THE READ-ONLY SOURCE MATERIAL THE PARITY ROWS STAND ON, and it no longer includes a score. The
+# stored per-pair score left this list on 2026-09-07, when the score became something the shipped
+# composer works out for two constructed records (see the head of this file). What is still read from
+# outside the engine is the material a SECOND ROAD needs: the two photographs the doors are measured
+# against, and the lab module the host's own frame is compared with.
+missing = [str(p) for p in (PHOTOS + [LAB / "effects" / "weave.js"]) if not p.exists()]
+
+# What a row is told when the score could not be composed. Node absent is the same class of
+# abstention as Chrome absent — a tool this machine does not carry — and is pinned. Anything else is
+# the composer failing to compose, which is a failure of the thing under test and reds.
+NO_NODE = ("node is not installed, so the shipped composer cannot compose a score "
+           "(pinned expected skip)")
+NO_SCORE = "the shipped composer composed no score for this suite: %s" % COMPOSED_WHY
 
 
 # ---------------------------------------------------------------- the lab copy, straightened
@@ -749,6 +943,12 @@ def on_bench(fn, pack_text=None, lab_text=None, query=""):
 if not chrome_available():
     for r in BROWSER_ROWS + BAND_ROWS + WAVE_ROWS + RED_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
+elif not node_available():
+    for r in BROWSER_ROWS + BAND_ROWS + WAVE_ROWS + RED_ROWS:
+        skip(r, NO_NODE)
+elif COMPOSED_WHY:
+    for r in BROWSER_ROWS + BAND_ROWS + WAVE_ROWS + RED_ROWS:
+        check(r, False, NO_SCORE)
 elif missing:
     for r in BROWSER_ROWS + BAND_ROWS + WAVE_ROWS + RED_ROWS:
         skip(r, "the lab tree is read-only source material and is absent here: " + missing[0])
@@ -846,13 +1046,25 @@ else:
                 check(BROWSER_ROWS[9], not errs, "; ".join(errs)[:200])
 
                 # ---- the census against the declaration ----------------------------------------
+                # THE THREE COUNTS ARE HELD EQUAL AND THE BYTES ARE HELD UNDER, and the difference
+                # is not a softening. §7's law is one-sided in the host's own words at
+                # pass-layer.js:2604 — «the host counts what was actually created FOR THEM and shows
+                # both, so a declaration that understates its counts or its bytes reads as the lie it
+                # is» — and its verdict, `over`, is exactly `granted > declared` on all four
+                # (pass-layer.js:2614). The counts stand equal because this instrument makes what it
+                # declares: no texture of its own, no framebuffer, one programme. The BYTES are a
+                # different quantity on the two sides: the composer's estimate is the whole footprint
+                # of the cue at its variant, the two source texture slots the HOST owns included,
+                # while a grant counts only what the host created for the instrument — which for a
+                # cue declaring no textures of its own is nothing. Holding those two equal would
+                # demand that an estimate be exact rather than sufficient, which no law here says.
                 res = js(br, "return window.__report();")["resources"]
                 check(BROWSER_ROWS[10],
                       res["declared"] and res["over"] is False
                       and res["granted"]["programs"] == res["declared"]["programs"]
                       and res["granted"]["textures"] == res["declared"]["textures"]
                       and res["granted"]["framebuffers"] == res["declared"]["framebuffers"]
-                      and res["granted"]["bytes"] == res["declared"]["bytesEstimate"],
+                      and res["granted"]["bytes"] <= res["declared"]["bytesEstimate"],
                       f"declared={res['declared']} granted={res['granted']}")
 
                 # ---- the two manifest refusals -------------------------------------------------
@@ -1160,13 +1372,13 @@ else:
                 br.evaluate("window.__cancel('door road row'); 0")
                 br.sleep(0.6)
                 held_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
-                              % json.dumps(balanced(0.87)))["gen"]
+                              % json.dumps(balanced(0.87, strips=DOOR_STRIPS)))["gen"]
                 br.sleep(1.0)
                 played = road(held_gen)
                 br.evaluate("window.__cancel('door road row'); 0")
                 br.sleep(0.6)
                 leak_gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
-                              % json.dumps(balanced(0.5)))["gen"]
+                              % json.dumps(balanced(0.5, strips=DOOR_STRIPS)))["gen"]
                 br.sleep(1.1)
                 leaked = road(leak_gen)
                 br.evaluate("window.__cancel('door road row'); 0")
@@ -1240,14 +1452,23 @@ else:
         # pair's own period of 480 px; on 390 px the width term rests on its floor of 0.5, so a
         # handle of 6 is what puts three bands on the glass and the period is 130 px.
         #
-        # THE POSE IS PINNED THE WAY lab/weave-bands-rig.html PINS IT, through the module's own
-        # declared handles and nothing else: the ribbon axis standing up and down (the axis the
-        # pair's own band family was measured on, so the turn never enters), the dial at the middle
-        # where the weave is widest, and the clock held at the second where the module's own
-        # strip-count breath, 1 + 0.35·sin(t·0.021·TAU + 1.1), crosses 1 exactly. Held there, the
+        # THE POSE IS PINNED THE WAY lab/weave-bands-rig.html PINS IT — the ribbon axis standing up
+        # and down (the axis the pair's own band family was measured on, so the turn never enters),
+        # the dial at the middle where the weave is widest, and the clock held at the second where
+        # the strip-count breath, 1 + 0.35·sin(t·0.021·TAU + 1.1), crosses 1 exactly. Held there, the
         # breath eases onto 1 and the drawn count is the handle times the width term, with nothing
         # drifting under the shot. The dwell is the ease's own time constant of 0.5 s many times
         # over, so the count is settled to a thousandth before anything is read.
+        #
+        # THE BAND COUNT IS ASKED OF THE SHIPPED INSTRUMENT DIRECTLY, and that is the change of
+        # 2026-09-07. The count used to be requested through the lab module's own `strips` handle and
+        # the pose the module settled on was then handed to the host. That road cannot reach this
+        # pose: the module clamps the request at eight (lab/effects/weave.js:703) and floors its own
+        # count at six (:324) — the two floors this instrument lowered to three for exactly this
+        # family — so a request of three arrived at the host as eight. The named handle is now
+        # written onto the module's own settled pose through `__drawWith`, which is the bench's own
+        # door for holding every other number of a pose still and walking one, and the count is read
+        # off the instrument's own numbers for that pose.
         FLAT_CLOCK = (math.pi - 1.1) / (2 * math.pi * 0.021)
         BAND_TOL = 0.06          # lab/weave-bands-measure.py's own bar for «the peak IS the strips»
         pair_missing = [str(w) for w in PAIR_WORKS if not w.exists()] + \
@@ -1278,63 +1499,47 @@ else:
 
             works = "?a=photos/%s&b=photos/%s" % (PAIR_WORKS[0].name, PAIR_WORKS[1].name)
             for i, (fw, fh, handle) in enumerate(((1440, 900, 3), (VW, VH, 6))):
-                rows = BAND_ROWS[2 * i:2 * i + 2]
+                row_ = BAND_ROWS[i]
                 with Browser(width=fw, height=fh) as bb:
                     bb.navigate(base + "/index.html" + works)
                     if not ready(bb):
-                        for r_ in rows:
-                            check(r_, False, "the bench never came up: "
-                                 + bb.evaluate("JSON.stringify(window.__errs||[])"))
+                        check(row_, False, "the bench never came up: "
+                              + bb.evaluate("JSON.stringify(window.__errs||[])"))
                         continue
                     bb.evaluate("window.__param('axis', 'up and down'); 0")
-                    bb.evaluate("window.__param('strips', %d); 0" % handle)
                     bb.evaluate("window.__mix(0.5); 0")
                     bb.evaluate("window.__clock(%.9f); 0" % FLAT_CLOCK)
                     bb.sleep(5.0)
-                    pose = js(bb, "return window.__hostDraw();")
-                    vals = js(bb, "return window.__values(window.__pose());")
+                    pose = js(bb, "return window.__drawWith({strips: %d});" % handle)
+                    vals = js(bb, "return window.__values(%s);" % json.dumps(pose))
                     bb.sleep(0.2)
                     bb.evaluate("window.__show('host'); 0")
                     bb.sleep(0.3)
                     ph = png(bb, SHOTS / ("bands3-%d-host.png" % fw))
-                    bb.evaluate("window.__show('module'); 0")
-                    bb.sleep(0.3)
-                    pm = png(bb, SHOTS / ("bands3-%d-module.png" % fw))
 
-                nv_host, nv_mod = vals["host"]["nV"], vals["module"]["nV"]
+                nv_host = vals["host"]["nV"]
                 drawn = fw / nv_host if nv_host else 0.0
                 b = band_of(ph)
-                # The count is read off BOTH roads and they must be one number: the manifest's own
-                # chain resolved by the instrument, and the module's frameValues resolved from the
-                # same pose. The peak is read on the VERTICAL family, which is the family the pair
-                # was measured on and the family the axis handle asks for — the strongest reading of
-                # any axis is reported beside it rather than asserted, because at a wide frame in a
-                # woven pose the row set can be the louder one and that is a property of the picture,
-                # not of the count.
-                check(rows[0],
-                      abs(nv_host - 3.0) < 0.005 and abs(nv_host - nv_mod) < 1e-9
+                # The peak is read on the VERTICAL family, which is the family the pair was measured
+                # on and the family the axis handle asks for — the strongest reading of any axis is
+                # reported beside it rather than asserted, because at a wide frame in a woven pose
+                # the row set can be the louder one and that is a property of the picture, not of
+                # the count.
+                check(row_,
+                      abs(nv_host - 3.0) < 0.005
                       and abs(b["vertical_period"] - drawn) <= BAND_TOL * drawn,
                       "a handle of %d on a %d×%d frame draws %.2f bands by the instrument's own "
-                      "numbers and %.2f by the lab module's, so the two roads resolve one count. "
-                      "The drawn period is %.1f px and the collection's own banding measure reads "
-                      "the vertical family of the drawn frame at %.1f px, strength %.4f (bar: "
-                      "within %d%% of the drawn period). Strongest family of either axis: %s at "
-                      "%.1f px, strength %.4f. WHERE the peak lands is what this row judges; HOW "
-                      "STRONG the family reads is reported beside it and moves with the second the "
-                      "pose is held at — the module's own sweep at the pair's seed read 0.4149 on "
-                      "the wide frame and 0.3735 on the phone at another second, and the floor was "
-                      "lowered to buy reachability, never a strength"
-                      % (handle, fw, fh, nv_host, nv_mod, drawn, b["vertical_period"],
+                      "numbers. The drawn period is %.1f px and the collection's own banding "
+                      "measure reads the vertical family of the drawn frame at %.1f px, strength "
+                      "%.4f (bar: within %d%% of the drawn period). Strongest family of either "
+                      "axis: %s at %.1f px, strength %.4f. WHERE the peak lands is what this row "
+                      "judges; HOW STRONG the family reads is reported beside it and moves with the "
+                      "second the pose is held at — the module's own sweep at the pair's seed read "
+                      "0.4149 on the wide frame and 0.3735 on the phone at another second, and the "
+                      "floor was lowered to buy reachability, never a strength"
+                      % (handle, fw, fh, nv_host, drawn, b["vertical_period"],
                          b["vertical_score"], int(BAND_TOL * 100), b["axis"], b["period"],
                          b["score"]))
-
-                dm, dx = diff(ph, pm)
-                check(rows[1], dm < SAME,
-                      "three bands, %d×%d: mean %.4f of 255 (threshold %.1f), worst channel %d. "
-                      "The pose is the module's own — its handles are driven, its pose() is read, "
-                      "and the host is handed that pose — so what is compared is two roads of one "
-                      "frame at the count the lowered floors exist for"
-                      % (fw, fh, dm, SAME, dx))
 
     # ============================================================================================
     # THE WAVE'S TWO ENDS, EACH AGAINST THE LAB MODULE IN THE MATCHING STATE.
@@ -1449,7 +1654,7 @@ else:
     # actually costs.
     def red_one(br):
         gen = js(br, "return window.__offer(%s, {clock: 0, progress: 0});"
-                 % json.dumps(balanced(0.5)))["gen"]
+                 % json.dumps(balanced(0.5, strips=DOOR_STRIPS)))["gen"]
         br.sleep(1.1)
         r = js(br, "var r = window.__report(); return {state: r.state, drew: r.drew, "
                    "buffer: r.census.buffer, refused: r.events.filter(function(e){ "
@@ -1547,6 +1752,12 @@ else:
 if not chrome_available():
     for r in WALK_ROWS:
         skip(r, "Chrome not installed (pinned expected skip)")
+elif not node_available():
+    for r in WALK_ROWS:
+        skip(r, NO_NODE)
+elif COMPOSED_WHY:
+    for r in WALK_ROWS:
+        check(r, False, NO_SCORE)
 elif missing:
     for r in WALK_ROWS:
         skip(r, "the lab tree is read-only source material and is absent here: " + missing[0])
@@ -1607,8 +1818,10 @@ else:
             # law retired with the delivery pack, because a score per pair in the settings file is
             # quadratic in the collection. What a walk derives for a real pair now comes out of the
             # composer, and tests/test_pass_composed.py proves that road; what these rows need is one
-            # FIXED weave score whose numbers they read back off the picture, so the score is handed
-            # to the declare, which is the road §1.1 has always named for a programmatic caller.
+            # weave score whose numbers they read back off the picture, so the score is handed to the
+            # declare, which is the road §1.1 has always named for a programmatic caller. The score
+            # itself is composed — by that same composer, over two constructed records — and only its
+            # two work slots are named for the pair the visitor is standing in front of.
             THE_SCORE = scored(WORKS[0], WORKS[1])
             br.navigate(base + "/")
             br.sleep(0.8)
@@ -1636,10 +1849,15 @@ else:
                           cue: cmd && cmd.score && cmd.score.cues ? cmd.score.cues[0].instrument.id : null,
                           duration: cmd && cmd.score ? cmd.score.duration : null};
                 """ % (WORKS[0], WORKS[1]))
+                # The duration is the composed score's own, read off the score this row handed over
+                # rather than retyped: what is being proved is that the declare freezes the score
+                # onto the command whole, and a number copied into this file would only prove that
+                # two copies agree.
                 check(WALK_ROWS[0],
                       r["got"] and r["hasScore"] and r["schema"] == 2 and r["cue"] == "weave"
-                      and r["duration"] == 3000,
-                      f"command={r}")
+                      and r["duration"] == THE_SCORE["duration"],
+                      f"command={r}; the composed score's own duration is "
+                      f"{THE_SCORE['duration']} ms")
                 br.sleep(0.15)
 
                 r = js(br, """
