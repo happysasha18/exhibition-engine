@@ -626,6 +626,27 @@ def cut_taken(br):
     return w
 
 
+# WHAT THE DOM SHOT IS WAITING FOR, AND WHY A NAP IS THE WRONG THING TO WAIT WITH. The cadence rows
+# photograph the renderer's landed frame against the DOM it handed to, so the DOM has to have
+# finished arriving before it is photographed. A half-faded photograph is a different picture from a
+# whole one, and a row comparing against it reads the fade rather than the seam.
+#
+# It used to be a flat half-second nap, and a half-second is enough only while the page is quick. On
+# the software rasteriser `liquid` draws about one frame every few seconds, and its cadence walks its
+# 2000 ms envelope across nine seconds of wall clock; the arriving work's own reveal runs on the same
+# starved main thread. Inside the full gate that nap ran out mid-fade and the row read 255 of 255 —
+# the whole picture apart — while standing alone on the same code it read clean. That is this
+# machine's speed deciding a pass/fail through the back door, which is the defect this whole file was
+# just repaired for once already (S-113).
+#
+# So the wait is on the page's own state: `rest_revealed` already asks the arriving work's own
+# computed opacity whether the reveal is done, and it is the same question every other row in this
+# file already asks through `rest_at`. Nothing here asserts a duration; a wait that runs out is
+# folded into the row rather than passed over.
+def dom_settled(br, arriving):
+    return rest_revealed(br, arriving, tries=600)
+
+
 def shot_scale(br, path):
     from PIL import Image
     return Image.open(path).size[0] / float(br.evaluate("String(innerWidth)"))
@@ -1054,16 +1075,16 @@ else:
                     running = wait_state(br, "running")
                     over6 = wait_cadence_over(br)
                     cut6 = cut_taken(br)
-                    br.sleep(0.5)
+                    settled6 = dom_settled(br, B)
                     last_canvas, last_box = read_cadence_capture(br, SHOTS, "cadence")
                     cadence_dom = png(br, SHOTS / "cadence-dom.png")
                     rep6 = js(br, "var r = window.__exPass.host.report();"
                                   "return {cadence: r.cadence, state: r.state};")
-                    if not (r6["took"] and running and cut6["cut"] and over6
+                    if not (r6["took"] and running and cut6["cut"] and over6 and settled6
                             and last_canvas and last_box):
                         check(ROWS[7], False, f"no cadence frame was caught: {r6} "
                                               f"running={running} cut={cut6} over={over6} "
-                                              f"box={last_box} report={rep6}")
+                                              f"settled={settled6} box={last_box} report={rep6}")
                     else:
                         e = cropped_excess(last_canvas, cadence_dom, last_box, scale, SHOTS,
                                            "cadence")
@@ -1189,7 +1210,7 @@ else:
                         _rrunning = wait_state(br, "running")
                         _rover = wait_cadence_over(br)
                         _rcut = cut_taken(br)
-                        br.sleep(0.5)
+                        _rsettled = dom_settled(br, B)
                         _rlast_canvas, _rlast_box = read_cadence_capture(br, SHOTS,
                                                                          _name + "-cadence")
                         _rcadence_dom = png(br, SHOTS / (_name + "-cadence-dom.png"))
@@ -1198,10 +1219,11 @@ else:
                                         " events: r.events.slice(-12)};")
                         _row = REAL_ROW_NAMES[(_name, "cadence")]
                         if not (_rr6["took"] and _rrunning and _rcut["cut"] and _rover
-                                and _rlast_canvas and _rlast_box):
+                                and _rsettled and _rlast_canvas and _rlast_box):
                             check(_row, False,
                                   f"no cadence frame was caught: {_rr6} running={_rrunning} "
-                                  f"cut={_rcut} over={_rover} box={_rlast_box} report={_rrep6}")
+                                  f"cut={_rcut} over={_rover} settled={_rsettled} "
+                                  f"box={_rlast_box} report={_rrep6}")
                         else:
                             _re = cropped_excess(_rlast_canvas, _rcadence_dom, _rlast_box, scale,
                                                  SHOTS, _name + "-cadence")
