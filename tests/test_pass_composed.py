@@ -4276,8 +4276,9 @@ else:
         tcWrong = []
         for r in tc:
             side = 0 if abs(r["from"] - r["to"]) <= 1e-9 else (1 if r["from"] > r["to"] else -1)
-            got = 0 if abs(r["applied"] - TC_DEF) <= 1e-9 else (1 if r["applied"] > TC_DEF else -1)
-            if side != got:
+            stands = (0 if abs(r["applied"] - TC_DEF) <= 1e-9
+                      else (1 if r["applied"] > TC_DEF else -1))
+            if side != stands:
                 tcWrong.append(r)
         tcApart = [r for r in tc if abs(r["from"] - r["to"]) > 1e-9]
         check(NODE_ROWS[36],
