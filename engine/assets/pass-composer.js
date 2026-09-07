@@ -7616,12 +7616,41 @@
           });
         }(cues[k]));
       }
+      // MOTION NOBODY CAN SEE IS NOT A PEAK, and until 2026-09-07 this sum counted it. Every term is
+      // a normalised parameter VELOCITY, and a handle carried through an ease-in curve accelerates
+      // all the way to its own end — so a cue whose handles ride `in` peaks at the ARRIVING DOOR,
+      // where the door law has already put that voice at nothing and the crossing has landed. The
+      // audit of S-115 measured what that costs: twelve of the twenty-seven instruments read exactly
+      // zero of 255 against their own neutralised twin at the instant their score called its peak,
+      // and up to 226 of 255 at the middle of their own window. Nine representative castings sat at
+      // a share of 0.999. That is the mechanism behind "at the peak of the crossing the viewer sees
+      // nothing", and it is this function's own.
+      //
+      // THE WEIGHT IS THE CUE'S OWN DOOR LAW, so nothing new is decided here. The entry-door contract
+      // this file already writes onto every upper voice says a voice is nothing at its own two doors
+      // and whole across its middle; the ground obeys the same shape at the passage's own two doors,
+      // where the departing and the arriving work each stand whole by themselves. Read as a function
+      // of the cue's own progress with those three values — 0 at 0, 1 at a half, 0 at 1 — that is
+      // one curve and no other, `4p(1-p)`, and it carries no number that was chosen. A term is
+      // therefore counted for as much as its own voice is actually in the frame.
+      //
+      // This weighs the motion; it does not replace it. A voice standing still in the middle of its
+      // window still contributes nothing, because its velocity is nought however present it is.
+      function inFrame(cue, u) {
+        var w = cue.window || [0, durSec];
+        var w0 = num(w[0]), w1 = num(w[1]);
+        if (!(w1 > w0)) return 0;
+        var p = (u * durSec - w0) / (w1 - w0);
+        if (p <= 0 || p >= 1) return 0;
+        return 4 * p * (1 - p);
+      }
       var sums = [], top = -Infinity, low = Infinity;
       for (i = 1; i < PEAK_STEPS; i++) {
         u = i / PEAK_STEPS;
         s = 0;
         for (k = 0; k < terms.length; k++) {
-          s += Math.abs(peakRead(terms[k][0], u, terms[k][1], durSec, 0)[1]) * terms[k][2];
+          s += Math.abs(peakRead(terms[k][0], u, terms[k][1], durSec, 0)[1]) * terms[k][2]
+             * inFrame(terms[k][1], u);
         }
         sums.push(s);
         if (s > top) top = s;
