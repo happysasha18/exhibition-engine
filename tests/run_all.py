@@ -207,6 +207,11 @@ SUITES = [
     # never narrow one, the one immutable base stage, and the absence of a product pair table.
     # Registered in the pass that wrote it.
     "gate_modes",
+    # S-115 (2026-09-07): the route's own laws — the four facts that make an instrument actually
+    # used, the session-scoped route memory carrying no work or pair identity, the short walk's own
+    # goals, the structural and colour gestures, polyphony read at the peak rather than off a score,
+    # and the diagnostics chain being whole. Registered in the pass that opened the row.
+    "pass_route_direction",
 ]
 
 # EXPECTED_RED names every suite this tree currently ships red on purpose, one reason each. A
