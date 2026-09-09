@@ -110,23 +110,34 @@
   var hostSpan = null;
   var hostSeat = null;
   var hostMatter = null;
+  var hostInstrument = null;
   function host(api) {
     hostSpan = (api && typeof api.handleSpan === "function") ? api.handleSpan : null;
     hostSeat = (api && typeof api.seatRegister === "function") ? api.seatRegister : null;
     hostMatter = (api && typeof api.matterInHand === "function") ? api.matterInHand : null;
+    hostInstrument = (api && typeof api.matterInstrument === "function") ? api.matterInstrument : null;
   }
-  // passHandleSpan("unfold", handle) — asked of the host each time rather than cached, so a settings
-  // record that lands after this file does is never missed, and a handle the record does not carry
-  // reads as absent rather than as a span of zero pretending to be measured.
+  // THE INSTRUMENT ACTUALLY STANDING THERE, read fresh off the host rather than assumed: whatever
+  // last drew (or is drawing now), by its own name. Before any crossing has ever played the host
+  // knows nothing yet, and "unfold" is what this file has always asked for in that silence, so that
+  // one case keeps reading exactly as it did before this fallback existed.
+  function currentInstrument() {
+    var got = null;
+    try { got = hostInstrument ? hostInstrument() : null; } catch (e) { got = null; }
+    return (typeof got === "string" && got) ? got : "unfold";
+  }
+  // passHandleSpan(instrument, handle) — asked of the host each time rather than cached, so a
+  // settings record that lands after this file does is never missed, and a handle the record does
+  // not carry reads as absent rather than as a span of zero pretending to be measured.
   function passHandleSpan(instrument, handle) {
-    if (instrument !== "unfold" || !hostSpan) return null;
+    if (!hostSpan) return null;
     var h = null;
     try { h = hostSpan(instrument, handle); } catch (e) { h = null; }
     if (!h || !isFinite(+h.lo) || !isFinite(+h.hi)) return null;
     return { lo: +h.lo, hi: +h.hi, span: +h.hi - +h.lo };
   }
   function handSpan(handle) {
-    var s = passHandleSpan("unfold", handle);
+    var s = passHandleSpan(currentInstrument(), handle);
     return s ? s.span : 0;
   }
   // ---- the reach: one hit-test, the same one the host applies before it ever calls attach() -----
@@ -498,7 +509,7 @@
     if (still()) { unpaint(); return; }
     var t = now();
     var h = handHandles(t);
-    var sMix = passHandleSpan("unfold", "mix"), sTilt = passHandleSpan("unfold", "tilt");
+    var sMix = passHandleSpan(currentInstrument(), "mix"), sTilt = passHandleSpan(currentInstrument(), "tilt");
     // Read fresh rather than off `downRect`: that rect belongs to a press, and a hover arrives with
     // no press at all. Only the two extents are read, and a translate moves neither of them, so the
     // write below can never feed its own reading.
@@ -565,7 +576,7 @@
       // `tilt` keep their names here: they were always the voice's own.
       breath: {
         handle: "mix",
-        span: passHandleSpan("unfold", "mix"),
+        span: passHandleSpan(currentInstrument(), "mix"),
         breathAmplitude: breathAmplitude(),
         breathValue: breathValue(t),
         // The same reading in no units at all, between -1 and 1, both gains already in it — what a
@@ -591,7 +602,7 @@
                 gain: seatGain() },
       },
       // The hinge, which the hand's own free point rides (Requirement 38 criterion 4's chart law).
-      tilt: { span: passHandleSpan("unfold", "tilt"), cap: handSpan("tilt") / 6 },
+      tilt: { span: passHandleSpan(currentInstrument(), "tilt"), cap: handSpan("tilt") / 6 },
       hold: { active: hold.active, stretch: hold.stretch },
       lean: { value: lean.value, cap: leanCap(), direction: lean.direction, engaged: lean.engaged },
       attend: { x: attend.x, y: attend.y, target: attend.target },

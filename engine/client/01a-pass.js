@@ -4389,6 +4389,15 @@
     try { inst = passLayer.report().instrument; } catch (e) { inst = null; }
     return passMatterFamily(inst);
   }
+  // THE RAW INSTRUMENT ID ITSELF, the same fact `passMatterInHand(null)` reads on its way to a
+  // family row, handed over unresolved for a caller that needs the instrument and not its family —
+  // `passHandleSpan` reads a manifest keyed by instrument, not by family.
+  function passMatterInstrument() {
+    if (!passLayer || typeof passLayer.report !== "function") return null;
+    let inst = null;
+    try { inst = passLayer.report().instrument; } catch (e) { inst = null; }
+    return inst;
+  }
 
   let passHand = null, passHandAsked = false, passHandLastEl = null;
   function passHandSet(h) {
@@ -4412,7 +4421,7 @@
     if (passHand && typeof passHand.host === "function") {
       try {
         passHand.host({ handleSpan: passHandleSpan, seatRegister: conductorVoiceRegister,
-                        matterInHand: passMatterInHand });
+                        matterInHand: passMatterInHand, matterInstrument: passMatterInstrument });
       } catch (e) {}
     }
   }

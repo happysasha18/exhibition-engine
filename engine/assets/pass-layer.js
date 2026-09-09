@@ -2755,6 +2755,7 @@
                 // Whether the flight itself was the transition, so a walk and a row can read what
                 // kind of passage played rather than infer it from the shape of the pose.
                 cameraLed: camLed(rec.cmd.score),
+                instrument: rec.inst ? rec.inst.name : null,
                 cadence: rec.cadence || null, handles: rec.lastHandles || null,
                 hang: hangRow(rec),
                 stack: (rec.voices || []).map(function (v) {
@@ -4392,7 +4393,7 @@
       variant: cur ? cur.variant : null,
       prepareBudgetMs: prepareBudgetMs, settleSlackMs: settleSlackMs,
       events: log.slice(),
-      instrument: cur ? cur.inst.name : null,
+      instrument: cur ? cur.inst.name : (lastRun ? lastRun.instrument : null),
       registered: Object.keys(instruments),
       // THE SITE'S RECORD, on the diagnostic surface: where it was read from, whether it was read
       // or refused, the reason in the host's own words when it was refused, and the names it
