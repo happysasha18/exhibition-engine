@@ -26,6 +26,11 @@
   if (typeof join !== "function") return;
 
   var TARGET_SEL = ".exh-frame img.work";
+  // The client hands over `recordFor(id)` at join: the record a work's wave lands, or null while
+  // it is still in the air. A work attached before its record landed is re-read on the hand's next
+  // arrival, so the first touch after the wave plays what the record chose, not the default.
+  var hostRecordFor = null;
+  function host(api) { hostRecordFor = (api && typeof api.recordFor === "function") ? api.recordFor : null; }
 
   // ---- the effects -----------------------------------------------------------------------------
   // `params` are the numbers the shader reads; `assign` overrides them from the record.
@@ -602,6 +607,14 @@
     raf = 0;
     if (!S || !att) return;
     if (!upload(att.img)) { S.canvas.style.visibility = "hidden"; return; }
+    // A picture the page has hidden — held back under a crossing, covered by a closer look — is not
+    // one to draw over: the overlay goes with it and the loop stops until the hand comes back.
+    try {
+      var cs = getComputedStyle(att.img);
+      if (cs.visibility === "hidden" || cs.display === "none" || +cs.opacity === 0) {
+        S.canvas.style.visibility = "hidden"; hand.inside = false; hand.down = false; hand.amt = 0; return;
+      }
+    } catch (e) {}
     place();
     var gl = S.gl, U = S.U, p = att.params;
     var t = (now() - t0) / 1000;
@@ -666,14 +679,17 @@
   function over(e) {
     if (!att) return false;
     var el = e.target;
-    if (el === att.img || el === S.canvas) return true;
+    if (el === att.img || (S && el === S.canvas)) return true;
     if (el && el.closest) {
       var w = el.closest(TARGET_SEL);
       if (w === att.img) return true;
+      // another work is under the pointer: the walk re-attaches on its own roads, not here
+      if (w && w !== att.img) return false;
     }
-    // a finger drags with capture on the element it started on; judge by the box then
+    // Anything else — a caption, a plaque, the frame itself, a finger held with capture on the
+    // element it started on — is judged by the picture's own box, which is what the hand is over.
     var r = att.img.getBoundingClientRect();
-    return hand.down && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
   }
   function pos(e) {
     var r = att.img.getBoundingClientRect();
@@ -681,9 +697,27 @@
              y: clamp(1 - (e.clientY - r.top) / Math.max(1, r.height), 0, 1) };
   }
   function enter(e) {
-    if (!hand.inside) { hand.inside = true; hand.enteredAt = now(); }
+    if (!hand.inside) {
+      hand.inside = true; hand.enteredAt = now();
+      if (att && !att.record && hostRecordFor && att.workId != null) {
+        var rec = null;
+        try { rec = hostRecordFor(att.workId); } catch (err) { rec = null; }
+        if (rec) reassign(rec);
+      }
+    }
     hand.p = pos(e);
     wake();
+  }
+  // The record landed after the attach: the same choice attach would have made, on the live hand.
+  function reassign(rec) {
+    var assigned = assign(rec);
+    var effect = att.override ? (BY_ID[att.override] || BY_ID[assigned.effect]) : BY_ID[assigned.effect];
+    var params = {};
+    Object.keys(effect.params).forEach(function (k) { params[k] = effect.params[k]; });
+    assigned.ranked.forEach(function (row) {
+      if (row.effect === effect.id) Object.keys(row.params).forEach(function (k) { params[k] = row.params[k]; });
+    });
+    att.record = rec; att.effect = effect; att.params = params; att.assigned = assigned;
   }
   function leave() { hand.inside = false; hand.down = false; wake(); }
   function onMove(e) {
@@ -749,7 +783,10 @@
     }
     if (opts.params) Object.keys(opts.params).forEach(function (k) { params[k] = opts.params[k]; });
     var same = att && att.img === img;
-    att = { img: img, container: container, record: record || null, effect: effect, params: params, assigned: assigned };
+    var workId = opts.workId != null ? opts.workId : (record && record.id != null ? record.id
+                 : (img.closest && img.closest(".exh-frame") && img.closest(".exh-frame").dataset.id) || null);
+    att = { img: img, container: container, record: record || null, workId: workId, override: opts.effect || null,
+            effect: effect, params: params, assigned: assigned };
     if (S && S.canvas.parentNode !== container) container.appendChild(S.canvas);
     if (!same) { hand.inside = false; hand.down = false; hand.amt = 0; hand.rip = []; if (S) S.canvas.style.visibility = "hidden"; }
     if (!img.complete || !img.naturalWidth) img.addEventListener("load", function () { wake(); }, { once: true });
@@ -774,7 +811,7 @@
   }
 
   try { window.__@@NS@@PassTouchReport = report; } catch (e) {}
-  join({ attach: attach, detach: detach, assign: assign, report: report,
+  join({ attach: attach, detach: detach, assign: assign, report: report, host: host,
          effects: EFFECTS.map(function (e) { return { id: e.id, title: e.title, note: e.note, params: e.params }; }),
          rules: RULES.map(function (r) { return { effect: r.effect, text: r.text }; }) });
 })();

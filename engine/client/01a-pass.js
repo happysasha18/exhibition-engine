@@ -3791,6 +3791,7 @@
     // now" moment, whatever road brought the visit here. Guarded on `passHandAsked`, so every call
     // after the first is a no-op.
     passHandOpen();
+    passTouchOpen();
     const cmd = declare({ fromEl: fromEl || null, toEl: toEl || null, dir: 1, span: 0,
                           kind: "jump", cause: cause, velocity: 0 });
     if (cmd) passLandNow();
@@ -4406,22 +4407,15 @@
   // asked for once at the walk's first landing, attached on the same pointer roads the hand takes.
   // The record it reads is the one the records wave lands (`passRecordsMap`); before the wave lands
   // the file plays its own default and takes the record on the next attach.
-  // IT IS ASKED FOR ON THE FIRST CONTACT, NOT AT THE LANDING: the front door's own weight
-  // (tests/door_budget.json in the site tree) counts every script a first visit fetches before its
-  // first gesture, and a visitor who never touches a work never needs this one. The hand's own
-  // pointerover/pointerdown road opens it, and the work under that hand gets it the moment it lands.
+  // It is asked for at the walk's first landing, beside the hand, so the first hover meets it
+  // already standing; it is one of the front door's own scripts and the site tree's door-weight
+  // record (tests/door_budget.json) names it by its bytes.
   let passTouch = null, passTouchAsked = false;
   const PASS_TOUCH_SRC = "pass-touch.js";
   function passTouchSet(t) {
     passTouch = (t && typeof t.attach === "function" && typeof t.detach === "function") ? t : null;
     if (passTouch && typeof passTouch.host === "function") {
       try { passTouch.host({ recordFor: (id) => passRecordsMap[String(id)] || null }); } catch (e) {}
-    }
-    // The file arrived after the hand that asked for it: the work under that hand gets it now.
-    if (passTouch && passHandLastEl && document.body.contains(passHandLastEl)
-        && !document.body.classList.contains("ex-zoom")) {
-      const w = passHandWorkFor(passHandLastEl);
-      if (w) passTouchAttach(passHandLastEl, w);
     }
   }
   function passTouchOpen() {
@@ -4438,6 +4432,9 @@
   }
   function passTouchAttach(img, w) {
     if (!passTouch || !img || !w) return;
+    // never over a crossing: the drawing layer owns the window, and a second shader under it would
+    // only take frames from it
+    if (document.body.classList.contains("ex-crossing") || document.body.classList.contains("ex-zoom")) return;
     try { passTouch.attach(img, passRecordsMap[String(w.id)] || null); } catch (e) {}
   }
   function passHandSet(h) {
@@ -4502,7 +4499,6 @@
     if (!w) return;
     passHandLastEl = img;
     if (passHand) passHand.attach(img, w);
-    passTouchOpen();
     passTouchAttach(img, w);
   }
   addEventListener("pointerdown", passHandAttachFrom, { capture: true, passive: true });
