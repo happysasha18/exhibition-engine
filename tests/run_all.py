@@ -358,10 +358,24 @@ def suites_naming(paths):
 def select(mode, acceptance, changed):
     """Which suites this run covers, and — for every suite it does not — the reason it does not.
 
+    THIS IS AN INVENTORY A PERSON READS, AND IT ORDERS NO RUN (the owner's word, 2026-09-09 09:53).
+    Nothing here starts a suite, widens a row's acceptance, or reaches a close or a push. What a run
+    covers is what a person named for it, which `suites_to_run` below answers; what a row is judged
+    by is its own acceptance command, which lives in the board's own reader and never consults this
+    function. Read the two together: this says "here is everything a change touches, and why for
+    each"; the row's acceptance says whether the work is done.
+
+    That separation is the repair for what this function used to be. It decided what ran, so a
+    change to a shared file made a narrow run into a full one, and on 2026-09-09 a change to
+    `pass-composer.js` turned a five-arm row into eighty browser suites and an hour, of which three
+    reds were the machine being busy. The widening below is still exactly right AS A READING — a
+    shared host really is touched by everything, and a path no suite names really is the one nobody
+    can speak for — so it stays, and it stays honest by no longer costing anything.
+
     Returns `(chosen, why, omitted_reason)`: an ordered list, a map from suite to the sentence that
     put it there, and one sentence covering everything left out. Nothing is ever dropped silently:
     a run that cannot ATTRIBUTE a changed path to any suite widens to the whole roster and says so,
-    because an unattributable change is exactly the one a narrow selection would step over.
+    because an unattributable change is exactly the one a narrow reading would step over.
     """
     if mode == "release":
         return list(SUITES), {s: "release · the whole roster" for s in SUITES}, None
@@ -419,6 +433,24 @@ def select(mode, acceptance, changed):
                      if docs and not code else "")
                   + f": {', '.join(left)}")
     return chosen, why, reason
+
+
+def suites_to_run(mode, acceptance):
+    """What this run COVERS: what a person named for it, and the invariants every run carries.
+
+    The selector above reads the change and reports; this answers the different question of what to
+    spawn, and it takes no input from the selector at all. A release run covers the whole roster,
+    which is a person asking for the whole roster. Any other run covers the suites named in
+    `--acceptance` — the row's own — plus the architectural invariants, which are a fixed list
+    rather than anything derived from the change.
+
+    Before 2026-09-09 this was the selector's output, and that is how a change to one shared file
+    ordered eighty suites nobody asked for. A person reads the inventory and names what they want.
+    """
+    if mode == "release":
+        return list(SUITES)
+    named = {s for s in acceptance if s in SUITES}
+    return [s for s in SUITES if s in named or s in ARCH_INVARIANTS]
 
 
 def check_roster():
@@ -547,7 +579,7 @@ def check_skip_ratchet(total_skips):
     return True
 
 
-def check_expected_red(failed):
+def check_expected_red(failed, ran):
     """S-26's third arm: compare this run's actually-red suites against EXPECTED_RED above.
 
     A suite in `failed` with no entry in EXPECTED_RED is a surprise regression — this run must not
@@ -556,10 +588,15 @@ def check_expected_red(failed):
     fails the run on its own — expected-red suites already keep the run from going green on the
     account of their own row; nothing further is owed for one of them turning green.
 
-    Returns True when this run may go green on this account, False when a surprise red stands.
+    `ran` is what this run actually covered, and the green note is read against it rather than
+    against `failed` alone. A narrow run leaves most of the roster out, and a suite that never ran
+    is "not in failed" for the same reason a suite that passed is: it printed no red. Reading the
+    two as one told a reader on 2026-09-09 that pass_reads "came back green this run" and invited
+    retiring its entry, in a run whose own left-out list named pass_reads. An expected-red entry is
+    only ever judged by a run that covered it.
     """
     surprises = [n for n in failed if n not in EXPECTED_RED]
-    stale = [n for n in EXPECTED_RED if n not in failed]
+    stale = [n for n in EXPECTED_RED if n in ran and n not in failed]
     for n in stale:
         print(f"\nnote · {n} is in EXPECTED_RED ({EXPECTED_RED[n]}) but came back green this run "
               f"— consider removing it from EXPECTED_RED")
@@ -649,6 +686,10 @@ def main():
                     help="parallel suites (each spawns its own Chrome); default 1, one at a time")
     ap.add_argument("--no-record-timings", action="store_true",
                     help="run the full gate without rewriting suite_timings.json (release/CI)")
+    ap.add_argument("--inventory", action="store_true",
+                    help="print what the change touches, one reason per line, and run nothing. This "
+                         "is the selector's only road to a person: read it, then name what you want "
+                         "run with --acceptance.")
     args = ap.parse_args()
 
     # BEFORE A SINGLE SUITE IS SPAWNED. Both of these answer off a directory listing, and both make
@@ -664,25 +705,36 @@ def main():
         changed = [ln for ln in done.stdout.splitlines() if ln.strip()]
         print(f"write-set · not given, so read off git: "
               f"{', '.join(changed) if changed else '(nothing uncommitted)'}")
-    chosen, why, omitted = select(args.mode,
-                                  [a.strip() for a in args.acceptance.split(",")],
-                                  changed)
+    acceptance = [a.strip() for a in args.acceptance.split(",")]
+    chosen, why, omitted = select(args.mode, acceptance, changed)
 
     # THE SELECTION IS ALWAYS PRINTED, WITH THE REASON EACH SUITE IS IN IT, and the omission is
     # printed too. A selector nobody can read is a selector that skips checks in silence, and the
     # whole point of naming modes was to stop that rather than to industrialise it.
-    print(f"mode · {args.mode} · {len(chosen)} of {len(SUITES)} suite(s) selected")
+    print(f"inventory · {len(chosen)} of {len(SUITES)} suite(s) touched by this change")
     if args.mode != "release":
         # A release run's 123 identical reasons would be noise, and its omission is the empty set;
         # a narrow run's reasons are the whole point, so they print one to a line with the layer
         # each suite stands at.
         for s in chosen:
             print(f"  [{layer_of(s)}] {s}: {why[s]}")
-    print("  " + (omitted or "left out: nothing — this selection is the whole roster"))
+    print("  " + (omitted or "left out: nothing — this reading is the whole roster"))
+
+    # THE INVENTORY IS A READING AND IT ORDERS NOTHING. This road exists so a person can see what a
+    # change touches without paying for a run to find out, and it returns before a single suite is
+    # spawned — which is the whole of the owner's word of 2026-09-09 09:53 made checkable: run this
+    # against a shared file, watch the list come back long, and watch nothing happen.
+    if args.inventory:
+        print("\ninventory only · no suite was run, no row's acceptance moved, and nothing here "
+              "reaches a close or a push. Name what you want run with --acceptance.")
+        return 0
+
+    covered = suites_to_run(args.mode, acceptance)
+    print(f"\ncovering · {len(covered)} suite(s) this run was asked for: {', '.join(covered)}")
     stages_before = stages_built_now()
 
     t0 = time.time()
-    queue = ordered_suites(chosen)
+    queue = ordered_suites(covered)
     running = {}    # name → Popen
     starts = {}     # name → monotonic start, paired at harvest for that suite's duration
     results = {}    # name → (rc, tail)
@@ -730,11 +782,11 @@ def main():
     shutil.rmtree(log_dir, ignore_errors=True)
 
     wall = time.time() - t0
-    failed = [n for n in chosen if results[n][0] != 0]
-    for n in chosen:
+    failed = [n for n in covered if results[n][0] != 0]
+    for n in covered:
         rc, tail = results[n]
         print(f"[{'OK ' if rc == 0 else 'RED'}] {n}: {tail}")
-    print(f"\n{len(chosen) - len(failed)}/{len(chosen)} suites green · wall {wall:.0f}s"
+    print(f"\n{len(covered) - len(failed)}/{len(covered)} suites green · wall {wall:.0f}s"
           + (f" · RED: {', '.join(failed)}" if failed else ""))
 
     # HOW MANY BASE STAGES THIS RUN HAD TO BAKE. Every browser suite stands on a copy of an immutable
@@ -783,7 +835,7 @@ def main():
         ratchet_ok = check_skip_ratchet(total_skips)
     else:
         ratchet_ok = True
-        print(f"\nskip ratchet · not read: this run covered {len(chosen)} of {len(SUITES)} suites, "
+        print(f"\nskip ratchet · not read: this run covered {len(covered)} of {len(SUITES)} suites, "
               f"and the ratchet's number is the whole roster's. This run skipped {total_skips}; the "
               f"record is left exactly as it stood.")
 
@@ -791,7 +843,7 @@ def main():
     # reported of itself. A suite named in EXPECTED_RED keeps this run from going green on the
     # account of its own row without also being a fresh SystemExit-worthy surprise — only a red
     # suite with NO entry there is.
-    expected_red_ok = check_expected_red(failed)
+    expected_red_ok = check_expected_red(failed, covered)
 
     sys.exit(1 if (not expected_red_ok or not ratchet_ok) else 0)
 
