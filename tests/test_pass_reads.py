@@ -195,6 +195,22 @@ def run_node(driver_text, args=()):
         if not lines:
             return {"error": "the driver printed nothing"}
         return json.loads(lines[-1])
+    except subprocess.TimeoutExpired:
+        # A TIMEOUT IS AN EMERGENCY STOP AND NEVER A VERDICT — this tree's own standing law
+        # (tlvphotos CLAUDE.md, "No clock on this machine", the owner's word of 2026-09-07 19:47;
+        # the pack says the same in guardrails.config.json as `timeout_is_never_a_verdict`). The
+        # ceiling above bounds a driver that truly HANGS. A busy host reaching it says nothing about
+        # any instrument, and letting it fall through to the generic handler below turned one stop
+        # into a row per instrument, each reading FAIL and naming something that was never measured:
+        # on 2026-09-09 this suite printed 24 such rows under four parallel lanes and passed on its
+        # own minutes later. So the run ENDS here, with its own exit code, and writes no row it
+        # cannot stand behind. A suite that can go red because the host was busy is a defect in that
+        # suite, and this is where that defect is repaired.
+        print("\nSTOPPED — the readings driver hit its emergency stop at %g s without\n"
+              "finishing. Nothing above is a verdict on any instrument. Run this suite\n"
+              "on its own for one."
+              % NODE_TIMEOUT_S)
+        sys.exit(3)
     except Exception as e:
         return {"error": str(e)}
     finally:
