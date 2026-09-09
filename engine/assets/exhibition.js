@@ -9693,16 +9693,9 @@
   // here). Overlays (side room, quiz/gift card) and the door keep native scroll — see the guards.
   if (HAS_TOUCH) {
     try { window.@@NS_UPPER@@Motion.touchPager = true; } catch (e) {}
-    let tY = null, tX = null, tLast = 0, tLastX = 0, tMoved = false, tOnWork = false;
+    let tY = null, tX = null, tLast = 0, tLastX = 0, tMoved = false;
     const SWIPE_MIN = 24;                              // net px that counts as a swipe (a tap/hold does nothing)
     const NATIVE_TOUCH = "#ex-side, #ex-quiz-card, #ex-gift-card, #ex-sound, .ex-share";
-    // FACE_SEL (above, shared with the wheel and keydown rest-guards) enumerates every OTHER face
-    // root but leaves out #ex-zoom — the magnifier's own pan/pinch (12-zoom-inspect-grab.js) reads
-    // touch directly rather than through native scroll, so a touch move over it belongs to that file,
-    // not this one. Widening the SHARED FACE_SEL would also change the wheel/keydown rest-guards
-    // (lines ~461, ~513) for a face that carries no scroll for them to rest — the touch-only copy
-    // below reaches only the touchmove logic beneath, so those two paths stay exactly as they are.
-    const TOUCH_FACE_SEL = FACE_SEL + ", #ex-zoom";
     addEventListener("touchstart", (e) => {
       if (!walkOwnsInput() || e.touches.length !== 1
           || (e.target && e.target.closest && e.target.closest(NATIVE_TOUCH))) {
@@ -9711,10 +9704,6 @@
       tY = tLast = e.touches[0].clientY;
       tX = tLastX = e.touches[0].clientX;
       tMoved = false;
-      // EX-HANG (INV-49, css exhibition.css:~215): the work's own touch-action:pan-y already claims the
-      // horizontal — a sideways drag on the photograph is the hand's axis, not the pager's. Remembered
-      // here so touchmove below can yield per axis rather than eating the whole gesture (line ~528).
-      tOnWork = !!(e.target && e.target.closest && e.target.closest(".exh-frame img.work"));
     }, { passive: true });
     // EX-CHROME: does some part of the face under the finger truly take this drag's axis?
     function faceConsumes(target, horiz) {
@@ -9724,7 +9713,7 @@
           const cs = getComputedStyle(el);
           if (horiz ? (el.scrollWidth  > el.clientWidth  + 1 && /(auto|scroll)/.test(cs.overflowX))
                     : (el.scrollHeight > el.clientHeight + 1 && /(auto|scroll)/.test(cs.overflowY))) return true;
-          if (el.matches && el.matches(TOUCH_FACE_SEL)) break;   // reached the face root — nothing consumed
+          if (el.matches && el.matches(FACE_SEL)) break;   // reached the face root — nothing consumed
         }
       }
       return false;
@@ -9735,7 +9724,7 @@
           if (fDecided == null) {
             const dx = e.touches[0].clientX - fX, dy = e.touches[0].clientY - fY;
             const adx = Math.abs(dx), ady = Math.abs(dy);
-            const inFace = !!(e.target && e.target.closest && e.target.closest(TOUCH_FACE_SEL));
+            const inFace = !!(e.target && e.target.closest && e.target.closest(FACE_SEL));
             // An overflow-x lane under the finger (EX-SERIES): DEFER the axis verdict past the noisy
             // first pixels and decide by the DOMINANT travel — a rightward drag from a slightly-vertical
             // start still scrolls the lane, where the 4px latch used to hand it to the walk and the lane
@@ -9757,7 +9746,7 @@
           if (fDecided) return;                        // a truly scrollable part — native, the lane lives
           e.preventDefault(); return;
         }
-        if (e.target && e.target.closest && e.target.closest(TOUCH_FACE_SEL)) return;  // multi-touch: today's treatment
+        if (e.target && e.target.closest && e.target.closest(FACE_SEL)) return;  // multi-touch: today's treatment
         e.preventDefault(); return;                    // the overflow cut is gone — the rest holds the walk
       }
       if (tY == null) {
@@ -9768,17 +9757,7 @@
             && !(e.target && e.target.closest && e.target.closest(NATIVE_TOUCH))) {
           tY = tLast = e.touches[0].clientY;
           tX = tLastX = e.touches[0].clientX; tMoved = false;
-          tOnWork = !!(e.target && e.target.closest && e.target.closest(".exh-frame img.work"));
         } else return;
-      }
-      // EX-HANG: a drag that started on the work and whose travel is horizontal-dominant is the
-      // work's own axis (CSS touch-action:pan-y already leaves it unclaimed) — the pager yields
-      // without eating the event, so pass-hand.js's pointermove gets the run. The same reading as
-      // the face branch above (cumulative dx/dy off the touch's own start), just decided per move
-      // rather than latched, since the pager (unlike a face) never needs to remember a verdict.
-      if (tOnWork) {
-        const adx = Math.abs(e.touches[0].clientX - tX), ady = Math.abs(e.touches[0].clientY - tY);
-        if (adx > ady) return;                         // horizontal-dominant on the work — yield, no preventDefault
       }
       tLast = e.touches[0].clientY;
       tLastX = e.touches[0].clientX;
