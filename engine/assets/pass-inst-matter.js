@@ -449,6 +449,11 @@
       // The module's own header ties it to the release envelope's disassembly–mystery–reassembly
       // class: the first work comes apart into the material and the second gathers out of it.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       // READ OFF THE MODULE'S OWN CONSTRUCTION. The vocabulary table publishes no level for this
       // module (lab/CROSSING-HISTORY.md carries no `matter` row), so these two are derived and said to
       // be derived: one field runs over the whole frame at SURFACE, and its grain is the TEXTURE.

@@ -676,6 +676,11 @@
       // The first work stands alone, the two lie over each other and turn against each other with a
       // third picture standing where they cross, and the second work is left standing alone.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       // WHERE THIS STANDS ON THE CHARTER'S SHELF, and the reading is carried rather than re-decided.
       // lab/data/module-contract.json records this module's level as LIGHT-COLOUR, and the
       // vocabulary table of lab/CROSSING-HISTORY.md carries the same word beside his standing verdict.
@@ -933,7 +938,7 @@
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/overlay.js", commit: "a24594c",
-                    sha256: "0751cc89f5636111c03d12faaca273f80701e545a835b526bb43ac3bd6bcf71c" },
+                    sha256: "0e4322855de18f647f8788f5f5ccf213a4af5209a2a0fffd8a1a80002f06029d" },
       readiness: "production-ready",
     };
 

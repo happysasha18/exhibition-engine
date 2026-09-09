@@ -753,7 +753,6 @@ LAB_WEAVE = LAB / "effects" / "weave.js"
 # The nine lines the wave lives on, and the three the wave changed underneath it. Every one of them
 # is quoted from lab/effects/weave.js as 32a013a left it.
 WAVE_LINES = [
-    "    '  float alive = smoothstep(0.0, 0.10, uDuty) * smoothstep(1.0, 0.90, uDuty);',\n",
     "    '  float aV1 = TAU * (uv.y * 1.7 - uT * 0.090);',\n",
     "    '  float aV2 = TAU * (uv.y * 3.1 + uT * 0.062 + 1.3);',\n",
     "    '  float edgeV = alive * (0.34 * sin(aV1) + 0.17 * sin(aV2));',\n",
@@ -763,18 +762,30 @@ WAVE_LINES = [
     "    '  float edgeH = alive * (0.34 * sin(aH1) + 0.17 * sin(aH2));',\n",
     "    '  float dEdgeH = alive * TAU * (0.34 * 1.6 * cos(aH1) + 0.17 * 2.9 * cos(aH2));',\n",
 ]
-# The three pairs the wave rewrote: the two cell coordinates and the two footprints. Left is the
-# waved form the module carries today, right is the form the module drew at cfbb62a — the last
-# straight state of the file, which is this lane's reference for what straight means.
+# `alive` ITSELF STAYS (repointed 2026-09-08, cause found not guessed): it left WAVE_LINES because
+# the lab grew a CURVE feature after 32a013a that shares `alive` as its own door gate (lab/effects/
+# weave.js, the block right below the wave lines — `curveV`/`dCurveV`/`curveH`/`dCurveH` all read
+# `alive`). `alive`'s declaration used to be a wave line and straighten() deleted it outright; the
+# four WAVE_PAIRS below still named the pre-curve text of cV/cH/wV/wH, so `.replace()` silently
+# no-op'd on all four (the lab's own lines now read `+ edgeV + curveV`, `+ (abs(dEdgeV) +
+# abs(dCurveV))`, never the old two-term form) and a straightened pack kept `curveV` etc. referring
+# to the `alive` declaration straighten() had just removed — the browser's own compiler read that
+# as `alive`/`edgeV`/`edgeH`/`dEdgeV`/`dEdgeH` undeclared, which is the row's real, reproducing
+# defect. Curve is a later, separate feature straighten()'s own docstring already promises not to
+# touch, so the repair keeps `alive` declared and drops only the wave edge's own eight lines, and
+# the four pairs below are read off the lab file as it stands today rather than as it stood at
+# 32a013a.
 WAVE_PAIRS = [
-    ("    '  float cV = warpV(uv.x, 2.0, phV) * nV + edgeV;',",
-     "    '  float cV = warpV(uv.x, 2.0, phV) * nV;',"),
-    ("    '  float cH = warpV(uv.y, 3.0, phH) * nH + edgeH;',",
-     "    '  float cH = warpV(uv.y, 3.0, phH) * nH;',"),
-    ("    '  float wV = 0.5 * (nV * warpD(uv.x, 2.0, phV) / uRes.x + abs(dEdgeV) / uRes.y);',",
-     "    '  float wV = 0.5 * nV * warpD(uv.x, 2.0, phV) / uRes.x;',"),
-    ("    '  float wH = 0.5 * (nH * warpD(uv.y, 3.0, phH) / uRes.y + abs(dEdgeH) / uRes.x);',",
-     "    '  float wH = 0.5 * nH * warpD(uv.y, 3.0, phH) / uRes.y;',"),
+    ("    '  float cV = warpV(uv.x, 2.0, phV) * nV + edgeV + curveV;',",
+     "    '  float cV = warpV(uv.x, 2.0, phV) * nV + curveV;',"),
+    ("    '  float cH = warpV(uv.y, 3.0, phH) * nH + edgeH + curveH;',",
+     "    '  float cH = warpV(uv.y, 3.0, phH) * nH + curveH;',"),
+    ("    '  float wV = 0.5 * (nV * warpD(uv.x, 2.0, phV) / uRes.x + (abs(dEdgeV) + abs(dCurveV)) "
+     "/ uRes.y);',",
+     "    '  float wV = 0.5 * (nV * warpD(uv.x, 2.0, phV) / uRes.x + abs(dCurveV) / uRes.y);',"),
+    ("    '  float wH = 0.5 * (nH * warpD(uv.y, 3.0, phH) / uRes.y + (abs(dEdgeH) + abs(dCurveH)) "
+     "/ uRes.x);',",
+     "    '  float wH = 0.5 * (nH * warpD(uv.y, 3.0, phH) / uRes.y + abs(dCurveH) / uRes.x);',"),
 ]
 
 
@@ -1675,21 +1686,34 @@ else:
     bug = WEAVE.replace("var want = st.mix === 0 ? 1 : (st.mix === 1 ? 0 : -1);",
                         "var want = -1;", 1)
     bug_read = on_bench(red_one, pack_text=bug)
+    # A READING MAY BE ABSENT — `on_bench` returns None outright when its own bench never came up
+    # (`ready(br)` timed out) — and the row's job is to say so in its own voice rather than format a
+    # number it does not have. `_f4` reads one field of a reading that may itself be None, in which
+    # case the field is absent too; both are printed as "no reading" rather than crashing the whole
+    # suite the way `bug_read and bug_read['fromOwnFile']` did, which is None exactly when the field
+    # is None AND when `bug_read` itself is — the same word standing for two different absences.
+    def _f4(read, field):
+        v = (read or {}).get(field)
+        return "%.4f" % v if isinstance(v, (int, float)) else "no reading"
     check(RED_ROWS[0],
           bug != WEAVE and base_read and bug_read
           and base_read["refused"] == 1 and base_read["state"] == "idle"
           and bug_read["refused"] == 0 and bug_read["state"] == "running"
           and bug_read["drew"] == 1 and bug_read["fromOwnFile"] > SEAM,
           f"with a balance of 0.5 driven onto the entry door on the "
-          f"{base_read and base_read['buffer']} buffer, the reading tells the host so "
-          f"({base_read and base_read['refused']} refusal, state "
-          f"{base_read and base_read['state']}) and the walk's own glide carries the visitor. With "
-          f"the door test taken out — no instant is a door, the instrument as it stood before it "
-          f"read its doors at runtime — the same command draws that door instead "
-          f"({bug_read and bug_read['refused']} refusals, state {bug_read and bug_read['state']}, "
-          f"{bug_read and bug_read['drew']} cue drawn), and the frame the visitor gets stands "
-          f"{bug_read and bug_read['fromOwnFile']:.4f} of 255 from the departing work's own file "
-          f"against the project's seam of {SEAM}: a door woven of both photographs")
+          f"{(base_read or {}).get('buffer', 'no reading')} buffer, the reading tells the host so "
+          f"({(base_read or {}).get('refused', 'no reading')} refusal, state "
+          f"{(base_read or {}).get('state', 'no reading')}) and the walk's own glide carries the "
+          f"visitor. With the door test taken out — no instant is a door, the instrument as it "
+          f"stood before it read its doors at runtime — the same command draws that door instead "
+          f"({(bug_read or {}).get('refused', 'no reading')} refusals, state "
+          f"{(bug_read or {}).get('state', 'no reading')}, "
+          f"{(bug_read or {}).get('drew', 'no reading')} cue drawn), and the frame the visitor gets "
+          f"stands {_f4(bug_read, 'fromOwnFile')} of 255 from the departing work's own file against "
+          f"the project's seam of {SEAM}: a door woven of both photographs"
+          + ("" if base_read and bug_read else " — the bench never came up for "
+             + (", ".join(n for n, r in (("the standing", base_read), ("the bug", bug_read))
+                          if r is None)) + " read"))
 
     # THE SECOND RED-ON-BUG PROOF: the reporting call reverted. `reportApplied` is the channel the
     # instrument's own reading travels back to the host on; with it taken out of the served file the
@@ -1706,6 +1730,10 @@ else:
     base_say = on_bench(applied_one)
     mute = WEAVE.replace("if (st.reportApplied) {", "if (false) {", 1)
     mute_say = on_bench(applied_one, pack_text=mute)
+    # SAME ABSENCE THE FIRST PROOF ABOVE GUARDS FOR: `on_bench` returns None outright when its own
+    # bench never comes up, and the message below is built whether or not the row passed — so it
+    # reads each reading through `.get()` on a dict-or-empty-dict rather than subscripting a
+    # possible None, and says "no reading" for a field it does not have instead of crashing on it.
     check(RED_ROWS[1],
           mute != WEAVE and base_say and mute_say
           and isinstance(base_say["applied"], dict)
@@ -1713,12 +1741,17 @@ else:
           and mute_say["applied"] is None
           and mute_say["handles"] is True and base_say["handles"] is True,
           f"with the call in place the host's stack row for the woven voice carries "
-          f"{json.dumps(base_say['applied'], ensure_ascii=False)} on the {base_say['buffer']} "
-          f"buffer; with the call reverted in a copy of the served file the same landing on the "
-          f"{mute_say['buffer']} buffer carries {json.dumps(mute_say['applied'])}, while the "
-          f"handles the HOST resolved stand on both rows ({base_say['handles']} and "
-          f"{mute_say['handles']}) — the reading is the instrument's own to publish, and nothing "
-          f"else on the row moves when it stops")
+          f"{json.dumps((base_say or {}).get('applied'), ensure_ascii=False)} on the "
+          f"{(base_say or {}).get('buffer', 'no reading')} buffer; with the call reverted in a "
+          f"copy of the served file the same landing on the "
+          f"{(mute_say or {}).get('buffer', 'no reading')} buffer carries "
+          f"{json.dumps((mute_say or {}).get('applied'))}, while the handles the HOST resolved "
+          f"stand on both rows ({(base_say or {}).get('handles', 'no reading')} and "
+          f"{(mute_say or {}).get('handles', 'no reading')}) — the reading is the instrument's own "
+          f"to publish, and nothing else on the row moves when it stops"
+          + ("" if base_say and mute_say else " — the bench never came up for "
+             + (", ".join(n for n, r in (("the standing", base_say), ("the mute", mute_say))
+                          if r is None)) + " read"))
 
     # THE THIRD RED-ON-BUG PROOF: the wave forced back to a literal. The depth handle is the whole
     # switch, so the regression is restored in one line — the served instrument stops reading the

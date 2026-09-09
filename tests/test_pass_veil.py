@@ -69,7 +69,13 @@ build_site.SITE_CONFIG["pass"] = {"visualLayer": "pass", "diagnostics": "on"}
 TMP = Path(tempfile.mkdtemp(prefix="synth_passveil_"))
 build_site.OUT = TMP
 build_site.build(SITE_URL)
-BUILT = (TMP / ("pass-inst-%s.js" % NAME)).read_text(encoding="utf-8")
+# The built file this suite reads, spelled out rather than assembled from NAME. The gate's own
+# selector (tests/run_all.py, suites_naming) matches a suite to a change by the TEXT of the
+# suite, so a filename put together at run time made this suite invisible to it: a change to
+# this very module could not name a single suite that proves it, and the run widened to the
+# whole roster instead. Found 2026-09-09, on S-117's own run.
+MODULE = "pass-inst-veil.js"
+BUILT = (TMP / MODULE).read_text(encoding="utf-8")
 
 # ---------------------------------------------------------------- string rows
 

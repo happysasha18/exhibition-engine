@@ -512,6 +512,12 @@
       // neither work has closed, and the arriving work's masses gather first with its detail growing
       // into them.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 3,
+      // ~/tlvphotos). A single-work module: the lab source this file was carried from declares
+      // `needs: 1` and draws one work alone, so pass-composer.js may not cast it into an
+      // ordinary crossing voice — only where a future road seats two of these, one per work
+      // (criterion 8), does it stay castable.
+      catalogue: "single-work",
       // THE MODULE'S OWN PUBLISHED LEVEL, lab/data/module-contract.json's own `strata-scale.level` row
       // — "CELL+TEXTURE" — read here whole: CELL because the departure still cuts the frame into
       // pieces that travel as rigid bodies (this port's own point-wise collapse of that same cut, the

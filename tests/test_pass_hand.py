@@ -727,8 +727,19 @@ else:
         def frame_frac(br, sel=WORK):
             # The write is a requestAnimationFrame away from the event that drove it (`paint()`
             # runs once per frame, not synchronously off the dispatch) — poll the DOM's own
-            # transform rather than reading it the instant the verb lands.
+            # transform rather than reading it the instant the verb lands. A non-empty transform
+            # alone is not enough: `verb` flips synchronously inside the event handler, before the
+            # next `paint()` tick ever runs, so a transform already written by an EARLIER frame
+            # (the hover/arrive one, near zero) reads as truthy too, on a load heavy enough to widen
+            # the gap between the two — caught live under concurrent suite load, never on a lone
+            # run. Two chained `requestAnimationFrame`s force at least one full tick of pass-hand's
+            # own loop (it reschedules every frame while the hand is on) to run and land before the
+            # read below, so the transform this returns is the current verb's own paint, not a
+            # stale one still standing from before it.
             wait_for(br, "!!document.querySelector(%s).style.transform" % json.dumps(sel), timeout=3.0)
+            br.evaluate("new Promise(function(resolve){"
+                        "requestAnimationFrame(function(){requestAnimationFrame(resolve)})})",
+                        awaitp=True)
             style = br.evaluate("document.querySelector(%s).style.transform" % json.dumps(sel))
             width = br.evaluate(
                 "document.querySelector(%s).getBoundingClientRect().width" % json.dumps(sel))

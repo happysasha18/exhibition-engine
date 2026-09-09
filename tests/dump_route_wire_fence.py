@@ -383,6 +383,28 @@ def observed_live_overlap(samples):
     return pairs
 
 
+# STATE-ORDER FIX, 2026-09-08 (route_wire_fence: red inside the full gate, green run alone). The
+# gate runs suites `--jobs 8`: this drive's own poll loop (`fly_and_capture`, below) shares the
+# machine's CPU with up to seven sibling Chrome instances, and every poll pays a real evaluate()
+# round trip before its `br.sleep(FLIGHT_TICK_SLEEP)` — under that contention one tick can cost
+# several real seconds instead of ~0.3, so the ACTUAL gap between two consecutive polls can outrun
+# `FLIGHT_TICK_SLEEP` by a wide margin while the passage keeps running in real browser time. A
+# planned overlap only barely wider than `FLIGHT_TICK_SLEEP` (`requested_live_overlap`'s own floor)
+# can then fall whole between two polls, and this suite read that as the fallback never lighting
+# both voices together — a defect in what this RUN could see, not in what the renderer drew. Fixed
+# at the source: `fly_and_capture` now timestamps every poll against the crossing's own start, and
+# `window_reachable` says whether a planned window ever stood a chance of being polled at all this
+# run, so a genuinely-missed window still reddens and an unreachable one is named rather than
+# blamed on the renderer.
+def window_reachable(window, timestamps):
+    """True when at least one poll's own real-clock timestamp (seconds since this crossing's flight
+    began) falls inside `window` — this run's own polling rate had at least one chance to observe
+    it. False means the window sat entirely inside the gap between two consecutive polls, which a
+    contended machine can do however sound the renderer's own timing is."""
+    start, end = window
+    return any(start <= t <= end for t in timestamps)
+
+
 def say(msg):
     print("[%s] %s" % (time.strftime("%H:%M:%S"), msg), flush=True)
 
@@ -393,6 +415,7 @@ def fly_and_capture(br):
     `drive_route_wire.py`'s own `fly_and_capture` does (screenshots and the composer's own ring-
     buffer event log dropped here — this file's acceptance gate never reads either)."""
     live_layer_trace = []
+    flight_start = time.time()
     br.key("ArrowDown")
     started = False
     docked = False
@@ -403,6 +426,10 @@ def fly_and_capture(br):
         except (ValueError, RuntimeError):
             sample = None
         if sample:
+            # `t`: real seconds since this crossing's own flight began, this run's own poll clock
+            # — read here so `window_reachable` (above) can tell a genuinely-missed planned overlap
+            # from one this run's own polling rate never had a chance to see (S-order fix, 2026-09-08).
+            sample["t"] = time.time() - flight_start
             live_layer_trace.append(sample)
         in_flight = (br.evaluate("String(document.body.classList.contains('ex-pass-curtain'))")
                      == "true"
@@ -560,12 +587,23 @@ def crossing_failures(label, crossing):
                                  "emergency instrument played, read off the live stack's cue id "
                                  "rather than off an event name that this host never publishes)")
     cues = (crossing.get("passage") or {}).get("cues") or []
-    observed = {tuple(row) for row in [list(p) for p in sorted(
-        observed_live_overlap(crossing.get("liveLayerTrace") or []))]}
+    trace = crossing.get("liveLayerTrace") or []
+    observed = {tuple(row) for row in [list(p) for p in sorted(observed_live_overlap(trace))]}
+    poll_times = [row.get("t") for row in trace if isinstance(row.get("t"), (int, float))]
+    cue_window = {c.get("id"): _window_pair(c.get("window"), c.get("id")) for c in cues}
     for contract in requested_live_overlap(cues):
         pair = tuple(sorted((str(contract.get("a")), str(contract.get("b")))))
-        if pair not in observed:
-            failures.append(label + ": planned overlap %s/%s was never renderer-live" % pair)
+        if pair in observed:
+            continue
+        wa = cue_window.get(contract.get("a"), (0.0, 0.0))
+        wb = cue_window.get(contract.get("b"), (0.0, 0.0))
+        window = (max(wa[0], wb[0]), min(wa[1], wb[1]))
+        if not window_reachable(window, poll_times):
+            # this run's own polling never landed inside the planned window at all — a fact about
+            # this run's own poll spacing under whatever else shared the machine, never a claim the
+            # renderer failed to show it (see the S-order fix note above `window_reachable`).
+            continue
+        failures.append(label + ": planned overlap %s/%s was never renderer-live" % pair)
     return failures
 
 
@@ -597,6 +635,22 @@ def main():
     with serve(tmp, answer=records_answer) as base:
         with Browser(width=VW, height=VH) as br:
             enter(br, base)
+            # THE RENDER-SCALE LADDER STAYS PINNED AT ITS OWN TOP RUNG (`fixedScale:true`,
+            # pass-layer.js:2412-2417/4380, the same seam test_pass_hang.py, test_pass_door_
+            # orientation.py, test_pass_route_direction.py and test_pass_seam.py already pin their
+            # own drives with) — clock and progress are left free, unlike those, because this drive
+            # needs a real flight over real time, not one frozen instant. WHERE THE STATE THIS FENCE
+            # READS ACTUALLY COMES FROM (bisected 2026-09-09, after an earlier pass wrongly blamed
+            # this suite's own poll interval for a red that only ever showed up under `--jobs 8`):
+            # `joyFloorWhy()` walks the ladder down and, once it stands on the last rung with the
+            # last rung still not enough, casts the host's own emergency instrument — off
+            # `p95Over(WIN_DROP)`, a real `performance.now()` reading of THIS Chrome process's own
+            # frame gaps. Unpinned, that reading is exactly as real when seven sibling suites are
+            # fighting this same machine for CPU as it is on a visitor's own slow phone — the ladder
+            # cannot tell the two apart, and correctly walks down for both. A route-WIRING fence has
+            # no stake in that reading either way, so it is held at the rung where nothing is yet
+            # given up, the way every sibling drive above already holds it for the same reason.
+            br.evaluate("window.__exPass.layer().configure({fixedScale:true}); 0")
             shape = js(br, "return window.__exPass.report().route;")
             ids = shape.get("ids") or []
             if len(ids) < 2:

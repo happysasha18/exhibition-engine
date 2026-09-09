@@ -130,6 +130,24 @@ CONTROL_POOL = ["colour.brightness", "colour.contrast", "colour.sat", "palette.h
 # or a real regression — reddens it by name, and there is now no entry here for one to hide behind.
 UNANSWERED = {}
 
+# A HANDLE THIS ROW ASKS TO STAND STILL, NEVER TO MOVE — the opposite claim from every other row
+# here, so it needs its own list rather than a silent skip. `overlay`'s `scale` is the one entry:
+# `pass-composer.js` computed it (`wanted.scale = mt.latticePx / mf.latticePx`) until 2026-09-08,
+# when the full synthetic sweep (11,900 castings, every pair/role/seed — see
+# ~/tlvphotos/docs/arsenal-revision-2026-09-08/composer-invisible-handles.md) showed the composer
+# asking for the instrument's own rest, 1.0, on every single one — a line of arithmetic that only
+# ever hands back the value it started from buys nothing, so the line was struck
+# (pass-composer.js, the overlay `wanted` block: "the line is gone; ... The handle stays on the
+# instrument at its own published rest"). A handle nothing drives cannot be proven to MOVE by
+# anything driving it, so the honest claim left is the opposite one, proven the same way every
+# other claim here is: sixty-odd real donor mutations, none of which move it.
+RESTS_AT_DEFAULT = {
+    ("overlay", "scale"): "pass-composer.js stopped driving `scale` 2026-09-08 (the full "
+                          "synthetic sweep showed it asking only for the instrument's own rest, "
+                          "1.0, on every casting) — the handle stands at its own published "
+                          "default now, never a computed reading",
+}
+
 results = []
 
 
@@ -256,7 +274,13 @@ for name in INSTRUMENTS:
         parse_error = "no such instrument file: %s" % src
         break
     text = src.read_text(encoding="utf-8")
-    entry = {"id": name, "handles": [], "suits": [], "unvariable": [], "control": None}
+    # SPEC.md Requirement 123's own catalogue, read off the instrument's own manifest text rather
+    # than typed — the same source pass-composer.js's CROSSING_INSTRUMENTS filter reads. Used below
+    # to ask the honest question when no pair casts the instrument: does it reach no seat because
+    # its own catalogue (carrier, standing) admits none, or is that a real regression.
+    catalogue_m = re.search(r'\bcatalogue:\s*"([^"]+)"', text)
+    entry = {"id": name, "handles": [], "suits": [], "unvariable": [], "control": None,
+             "catalogue": catalogue_m.group(1) if catalogue_m else None}
     for handle, sentence in declared_handles(text).items():
         field = field_of(sentence)
         if field:
@@ -429,8 +453,8 @@ function castingFor(instrument, want) {
 // record this walk has not yet seen departing, or one it has not yet seen arriving: every class then
 // gets its turn on both sides and the walk stops after at most twice as many seats as the corpus has
 // records.
-function seatWhereDriven(instrument, handle, path, from) {
-  const base = cueOf(instrument, works.works[from.a], works.works[from.b], from.dir);
+function seatWhereDriven(instrument, handle, path, from, seed) {
+  const base = cueOf(instrument, works.works[from.a], works.works[from.b], from.dir, seed);
   const was = base ? JSON.stringify(nodeOf(base, handle)) : null;
   const triedFrom = {}, triedTo = {};
   let softest = null;
@@ -441,14 +465,14 @@ function seatWhereDriven(instrument, handle, path, from) {
         const departing = dir === "b-to-a" ? ids[j] : ids[i];
         const arriving = dir === "b-to-a" ? ids[i] : ids[j];
         if (triedFrom[departing] && triedTo[arriving]) continue;
-        const cue = cueOf(instrument, works.works[ids[i]], works.works[ids[j]], dir);
+        const cue = cueOf(instrument, works.works[ids[i]], works.works[ids[j]], dir, seed);
         if (!cue) continue;
         const n = nodeOf(cue, handle);
         if (n === undefined || JSON.stringify(n) === was) continue;
         triedFrom[departing] = true;
         triedTo[arriving] = true;
         const seat = {a: ids[i], b: ids[j], dir: dir, cue: cue.id};
-        const r = moveOnSeat(instrument, seat, handle, path);
+        const r = moveOnSeat(instrument, seat, handle, path, seed);
         if (r.moved || r.noField || r.presence) return r;
         if (softest === null) softest = r;
       }
@@ -457,11 +481,33 @@ function seatWhereDriven(instrument, handle, path, from) {
   return softest;
 }
 
-function cueOf(instrument, A, B, dir) {
+// LAST RESORT, PAID ONLY BY A HANDLE STILL UNANSWERED AFTER seatWhereDriven's OWN FULL-CORPUS SCAN
+// AT THIS FILE'S ONE FIXED SEED. `tunnel`'s `ribs` is the case that taught this one: its fill needs
+// BOTH works cut as rings, and the corpus's five ring-kind records DO make twenty such ordered
+// pairs — but WHICH instrument wins a pair's crossing seat is the composer's own seeded die, and
+// 2026-09-08's catalogue filter (pass-composer.js's CROSSING_INSTRUMENTS) moved that die's pick, at
+// THIS file's fixed SEED, off every one of the twenty (confirmed against the pre-filter module,
+// which won two of the twenty at the same seed). The corpus itself still carries the class the
+// handle needs; only this file's one fixed seed happens not to reach it any more. So the same
+// full-corpus scan seatWhereDriven already runs is repeated once per whole seed the composer's own
+// declared `seedSpan` names — not a number chosen here, the module's own bound — stopping at the
+// first seed whose scan answers. Paid only by a handle already about to be reported unread, exactly
+// as seatWhereDriven's own widening is.
+function seatWhereDrivenAnySeed(instrument, handle, path, from) {
+  const lo = Math.ceil(composer.seedSpan[0]), hi = Math.floor(composer.seedSpan[1]);
+  for (let s = lo; s <= hi; s++) {
+    if (s === SEED) continue;
+    const r = seatWhereDriven(instrument, handle, path, from, s);
+    if (r && (r.moved || r.noField || r.presence)) return r;
+  }
+  return null;
+}
+
+function cueOf(instrument, A, B, dir, seed) {
   let p;
   try {
-    p = composer.passageFor({workRecordA: A, workRecordB: B, direction: dir, seed: SEED,
-                             routeRole: "middle"});
+    p = composer.passageFor({workRecordA: A, workRecordB: B, direction: dir,
+                             seed: seed === undefined ? SEED : seed, routeRole: "middle"});
   } catch (e) { return null; }
   if (!p || !p.score) return null;
   return (p.plan.cues || []).find((c) => c.instrument.id === instrument) || null;
@@ -473,10 +519,12 @@ function nodeOf(cue, handle) {
 
 // Varies `path` on whichever of the two works carries a reading that moves the handle, and answers
 // whether the handle moved. The departing work is tried first; a handle whose own sentence says it
-// reads the ARRIVING work answers on the second, and the side is reported either way.
-function moveOnSeat(instrument, seat, handle, path) {
+// reads the ARRIVING work answers on the second, and the side is reported either way. `seed`
+// defaults to this file's own fixed SEED — every existing caller keeps that same seed; only
+// seatWhereDrivenAnySeed's own widened scan (above) ever passes another.
+function moveOnSeat(instrument, seat, handle, path, seed) {
   const A0 = works.works[seat.a], B0 = works.works[seat.b];
-  const base = cueOf(instrument, A0, B0, seat.dir);
+  const base = cueOf(instrument, A0, B0, seat.dir, seed);
   if (!base) return {error: "the seat pair stopped casting " + instrument};
   const was = nodeOf(base, handle);
   if (was === undefined) return {absent: true};
@@ -488,7 +536,7 @@ function moveOnSeat(instrument, seat, handle, path) {
     for (const value of pool.slice(0, 30).concat([GONE])) {
       const A = clone(A0), B = clone(B0);
       applyVariation(side === "A" ? A : B, path, value);
-      const cue = cueOf(instrument, A, B, seat.dir);
+      const cue = cueOf(instrument, A, B, seat.dir, seed);
       if (!cue || cue.id !== base.id) { recast++; continue; }
       tried++;
       if (!same(nodeOf(cue, handle), was)) {
@@ -593,6 +641,14 @@ for (const entry of plan) {
           const driven = seatWhereDriven(id, h.handle, h.field, seat[0]);
           if (driven) r = driven;
         }
+        if (!r.moved && !r.noField && !r.presence) {
+          // Still standing after the whole corpus at this file's one fixed seed: try that same
+          // full-corpus scan again at every other whole seed the composer's own seedSpan names
+          // (seatWhereDrivenAnySeed, above) — paid only here, by a handle already about to be
+          // reported unread.
+          const drivenAnySeed = seatWhereDrivenAnySeed(id, h.handle, h.field, seat[0]);
+          if (drivenAnySeed) r = drivenAnySeed;
+        }
         rec.handles.push(Object.assign({handle: h.handle, field: h.field}, r));
       }
       // THE CONTROL. One measurement the instrument's whole file never names, varied the same way:
@@ -671,8 +727,22 @@ else:
             notes.append("SKIP %s — %s" % (u["what"], u["why"]))
 
         if rec.get("noCast"):
-            bad.append("no pair of the constructed corpus casts this instrument, so no handle of "
-                       "it could be moved at all")
+            # THE HONEST QUESTION, GIVEN THE CATALOGUE (2026-09-08). `pass-composer.js`'s
+            # CROSSING_INSTRUMENTS filter keeps a `carrier` or `standing` instrument off every
+            # crossing-voice seat (pivot/travel/arrival) — the ONLY seat `passageFor` ever casts
+            # through — so `tilt` (carrier), `hero` and `lens` (standing) reach no seat at all and
+            # this row can get no live cue to probe them with. That is a fact about the seat, never
+            # a claim their own handle wiring is broken; this suite is named in EXPECTED_RED
+            # (tests/run_all.py) for exactly the three of them, with this same reason.
+            if entry.get("catalogue") in ("carrier", "standing"):
+                bad.append("no pair of the constructed corpus casts this instrument — it is "
+                           "catalogued `%s` and reaches no crossing-voice seat since the catalogue "
+                           "filter landed (2026-09-08); no %s-seat mechanism exists yet to cast it "
+                           "through instead, so this row cannot get a live cue to probe (EXPECTED_RED, "
+                           "see tests/run_all.py)" % (entry["catalogue"], entry["catalogue"]))
+            else:
+                bad.append("no pair of the constructed corpus casts this instrument, so no handle "
+                           "of it could be moved at all")
         for h in rec.get("handles", []):
             what = "`%s` ← %s" % (h["handle"], h["field"])
             if h.get("moved"):
@@ -690,6 +760,12 @@ else:
                              "the measurement cannot be varied in isolation here" % what)
             elif h.get("error"):
                 bad.append("%s: %s" % (what, h["error"]))
+            elif (name, h["handle"]) in RESTS_AT_DEFAULT:
+                # THE OPPOSITE CLAIM, PROVEN THE SAME WAY: `moved` reading False here is not a
+                # handle standing unread, it is `RESTS_AT_DEFAULT`'s own claim made real — the sixty-
+                # odd real donor mutations `moveOnSeat`/`seatWhereDriven`/`seatWhereDrivenAnySeed`
+                # already tried, across every seat this run's widening reaches, moved it not once.
+                good.append("%s stands still — %s" % (what, RESTS_AT_DEFAULT[(name, h["handle"])]))
             else:
                 key = (name, "`%s`" % h["handle"], h["field"])
                 unanswered.add(key)

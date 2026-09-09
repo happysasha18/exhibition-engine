@@ -234,7 +234,37 @@ SUITES = [
 # length are each dropped and recorded rather than named in the score; and the camera's own rotation
 # no longer hangs on the two works' tonal apartness. The entry comes out with the last of them, which
 # is what its own last line asked for.
-EXPECTED_RED = {}
+EXPECTED_RED = {
+    "pass_tilt": "one row (\"each geometric handle's own named measurement is what actually moves "
+                 "it, and `lead` moves only with `columns`\") needs a live tilt cue to probe the "
+                 "handle wiring, and `tilt` is catalogued a carrier — pass-composer.js's "
+                 "CROSSING_INSTRUMENTS filter keeps a carrier off every crossing-voice seat, so "
+                 "`passageFor` can cast no tilt cue at all (2026-09-08, the same catalogue filter "
+                 "the owner asked for). Retire this the day a carrier-seat mechanism exists to "
+                 "cast tilt through, or a driver builds a tilt cue directly.",
+    "pass_reads": "three of the nineteen rows (`tilt`, `hero`, `lens`) need a live cue to probe "
+                  "their handle wiring, and none of the three reach a crossing-voice seat any more "
+                  "— `tilt` is catalogued a carrier and `hero`/`lens` are catalogued standing, and "
+                  "pass-composer.js's CROSSING_INSTRUMENTS filter keeps carrier/standing off every "
+                  "crossing-voice seat (2026-09-08, the same catalogue filter the owner asked for). "
+                  "Retire each the day a seat mechanism exists to cast it through, or a driver "
+                  "builds its cue directly.",
+    "pass_route_direction": "two open findings. (1) the same three instruments (`hero`, `lens`, "
+                            "`tilt`) never reach a crossing-voice seat for the same reason as "
+                            "pass_reads/pass_tilt above: pass-composer.js's CROSSING_INSTRUMENTS "
+                            "filter keeps carrier (`tilt`)/standing (`hero`/`lens`) instruments off "
+                            "every seat the chooser ever fills (2026-09-08) — ROUTE facts 1-4 for "
+                            "these three carry no live casting to read. (2) kaleidoscope's own fact "
+                            "4 (\"a viewer can see it at the passage's own peak\") and the fleet's "
+                            "own peak-placement row: `motionPeak` (pass-composer.js) predates "
+                            "2026-09-08 and is untouched by today's catalogue filter, so this is a "
+                            "standing finding of the audit itself, not a consequence of the filter "
+                            "— on the representative casting this run's own fixed sweep order picks, "
+                            "the score's own named peak reads no visible gesture while the middle of "
+                            "the same cue's window plainly does. Retire (1) the day a seat mechanism "
+                            "exists for a carrier/standing instrument; retire (2) when `motionPeak` "
+                            "is repaired for kaleidoscope's own cue shape.",
+}
 
 # ---------------------------------------------------------------- the five proof layers (S-114)
 # THE SAME FIVE NAMES, IN THE SAME WORDS, that `.live-spec/profile.md` and `TEST_MATRIX.md` carry.

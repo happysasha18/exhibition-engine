@@ -637,6 +637,14 @@
       // The departing work comes apart into a material, the middle is a frame carrying matter in the
       // air with a gap behind it, and the arriving work gathers out of what has landed.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO, READ OFF THIS INSTRUMENT'S OWN
+      // CONSTRUCTION rather than off SPEC.md Requirement 123, which names no catalogue for it:
+      // `lab/effects/` holds no pour module (criterion 9), so no lab source stands to carry a
+      // `needs:` count or a criterion-2 listing. What decides it is this file's own header at
+      // :44-45 above: "When every column has poured, the heap has buried the frame and the
+      // arriving work stands whole" — the departing work disassembles and the arriving work
+      // assembles out of it, which is a crossing.
+      catalogue: "crossing",
       // WHICH ARRIVAL MODE WANTS THIS INSTRUMENT (plan row S-83, 2026-09-03). CRYSTALLIZED names a
       // seed crystallizing out of what has landed, which is what this instrument's own `arrival`
       // and `seedPlace` handles play — the composer used to carry this as one entry of a table it

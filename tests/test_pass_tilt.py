@@ -504,24 +504,27 @@ check("PASS-TILT every geometric handle publishes the measurement it reads, or s
       and 'reads: "structure.horizon.y' in REGION
       and "texture.spectralPeriodPx over structure.frameSide" in REGION
       and "the strip element sets" in REGION
-      and "reads: null" in REGION,
+      and "golden-angle staggered" in REGION,
       "the LEAN reads structure.polar.tunnel, how strongly a work already reads as a corridor; the "
       "AXIS reads structure.horizon.y, the work's own measured horizon, which is the line the plane "
       "should turn about; the CROWDING reads texture.spectralPeriodPx over structure.frameSide, the "
       "repeat that decides how far the far rows may crowd before they stop resolving; the COLUMN "
-      "COUNT reads the strip element sets. The front's own ORDER reads nothing — no measurement in a "
-      "work record says how ragged a handover should be, and the handle says `reads: null` rather "
-      "than naming a number nobody measured; the row below runs the real composer and shows each "
-      "claimed reading is what actually moves its handle, and none of them move `lead`")
+      "COUNT reads the strip element sets. The front's own ORDER (plan row S-117, 2026-09-08) reads "
+      "the same strip count golden-angle staggered, charter shelf 13's stagger instrument; the row "
+      "below runs the real composer and shows each claimed reading is what actually moves its "
+      "handle, `lead` included, moving together with `columns` since both now read the same count")
 
 # EACH HANDLE'S CLAIMED READING, PROVEN BY MOVING IT. The manifest's `reads:` prose is the LEAN's,
-# the AXIS's, the CROWDING's and the COLUMN COUNT's own claim about what work-record field drives
-# them; what actually drives a handle's computed value lives in pass-composer.js's own `instr ===
-# "tilt"` branch, which is real code and not a comment. This runs the REAL composer (the same file
-# and the same two fixtures test_pass_composed.py drives) over a real pair, once per axis, changing
-# ONLY the one field that handle's own manifest names — and asks that ONLY that handle's node move,
-# with `lead` (whose own manifest says `reads: null`) standing dead still throughout, since nothing
-# names a measurement for it to answer to.
+# the AXIS's, the CROWDING's, the COLUMN COUNT's and now the ORDER's own claim about what work-record
+# field drives them; what actually drives a handle's computed value lives in pass-composer.js's own
+# `instr === "tilt"` branch, which is real code and not a comment. This runs the REAL composer (the
+# same file and the same two fixtures test_pass_composed.py drives) over a real pair, once per axis,
+# changing ONLY the one field that handle's own manifest names — and asks that ONLY that handle's
+# node move, with ONE NAMED EXCEPTION (plan row S-117, 2026-09-08): mutating the strip element's own
+# count also moves `lead`, because `lead` now reads charter shelf 13's golden-angle stagger of that
+# very count — the same field `columns` reads — so the two are one measurement answering two
+# handles, not two measurements. `lead` stands still on every other axis's mutation, since none of
+# them touch the strip count.
 DRIVER_HANDLES = r"""
 "use strict";
 const fs = require("fs"), vm = require("vm");
@@ -569,19 +572,22 @@ const baseNodes = nodesOf(baseCue);
 // ONE MUTATION PER HANDLE, each touching ONLY the raw field that handle's own manifest names:
 // LEAN off structure.polar.tunnel, AXIS off structure.horizon.y, CROWDING off the pair's own
 // repeat (texture.spectralPeriodPx over frameSide), COLUMN COUNT off the strip element's own count.
+// `lead` NAMES NO MUTATION OF ITS OWN (plan row S-117, 2026-09-08): it reads the same strip count
+// `columns` reads, golden-angle staggered, so the COLUMN COUNT mutation is expected to move it too
+// — named as a companion below rather than as a fifth axis.
 const MUTANTS = [
-  ["tilt", (A) => { A.structure.polar.tunnel = 0.9; }],
-  ["horizon", (A) => { A.structure.horizon.y = 0.1; }],
-  ["squeeze", (A) => { A.texture.spectralPeriodPx = A.texture.spectralPeriodPx / 2; }],
+  ["tilt", (A) => { A.structure.polar.tunnel = 0.9; }, []],
+  ["horizon", (A) => { A.structure.horizon.y = 0.1; }, []],
+  ["squeeze", (A) => { A.texture.spectralPeriodPx = A.texture.spectralPeriodPx / 2; }, []],
   ["columns", (A) => {
     const s = A.sets.find((x) => x.kind === "strip");
     s.count = 12; s.realCount = 12;
-  }],
+  }, ["lead"]],
 ];
 
 const out = {baseCue: baseCue.id, axes: {}};
 let ok = true;
-for (const [axis, mut] of MUTANTS) {
+for (const [axis, mut, companions] of MUTANTS) {
   const A = clone(A0);
   mut(A);
   const cue = tiltCue(run(A));
@@ -592,11 +598,13 @@ for (const [axis, mut] of MUTANTS) {
   }
   const nodes = nodesOf(cue);
   const moved = JSON.stringify(nodes[axis]) !== JSON.stringify(baseNodes[axis]);
+  const companionsMoved = companions.every(
+    (h) => JSON.stringify(nodes[h]) !== JSON.stringify(baseNodes[h]));
   const othersStill = ["tilt", "horizon", "squeeze", "columns", "lead"]
-    .filter((h) => h !== axis)
+    .filter((h) => h !== axis && companions.indexOf(h) < 0)
     .every((h) => JSON.stringify(nodes[h]) === JSON.stringify(baseNodes[h]));
-  out.axes[axis] = {moved: moved, othersStill: othersStill};
-  if (!moved || !othersStill) ok = false;
+  out.axes[axis] = {moved: moved, companionsMoved: companionsMoved, othersStill: othersStill};
+  if (!moved || !companionsMoved || !othersStill) ok = false;
 }
 out.ok = ok;
 console.log(JSON.stringify(out));
@@ -609,21 +617,40 @@ if not node_available():
 else:
     handles = run_node(DRIVER_HANDLES, args=[COMPOSER_MODULE, FIXTURE_COMPOSED, FIXTURE_WORKS])
     axes = handles.get("axes", {}) if isinstance(handles, dict) else {}
-    check("PASS-TILT each geometric handle's own named measurement is what actually moves it, and "
-          "nothing moves `lead`",
+    # THIS ROW IS EXPECTED RED, AND NAMED AS SUCH IN tests/run_all.py's EXPECTED_RED — NOT SKIPPED.
+    # A skip is a check that stopped biting; this one still bites, and what it bites is real: `tilt`
+    # is catalogued a carrier (SPEC.md Requirement 123 criterion 4), and `pass-composer.js`'s
+    # `CROSSING_INSTRUMENTS` filter (:1875-1878) keeps a carrier off every crossing-voice seat
+    # (pivot/travel/arrival) — the ONLY seat `composer.passageFor` ever casts through. This row
+    # needs a LIVE tilt cue to probe its handle wiring, and that vehicle is gone: a carrier's own
+    # seat — leaning on another module's live picture — is a mechanism this engine has not built
+    # (the same class of gap Requirement 123 criterion 8 records for single-work modules). The
+    # condition below states the law in full — every handle moves on its own named measurement,
+    # `lead` moving only with `columns` — and it goes red on `handles.get("error")` because
+    # `passageFor` can cast no tilt cue at all to check it against, which is the fact, not a weaker
+    # law standing in for it. The day a carrier-seat mechanism exists to cast tilt through — or a
+    # driver builds a tilt cue directly rather than through `passageFor`'s own die — this row goes
+    # green on its own and the EXPECTED_RED entry is the one to retire.
+    check("PASS-TILT each geometric handle's own named measurement is what actually moves it, "
+          "and `lead` moves only with `columns`",
           not handles.get("error") and handles.get("ok") is True
           and sorted(axes) == ["columns", "horizon", "squeeze", "tilt"]
-          and all(axes[a].get("moved") and axes[a].get("othersStill") for a in axes),
-          ("on a real pair that casts tilt as its «%s» cue, varying structure.polar.tunnel alone "
-           "moves only `tilt`'s own node; varying structure.horizon.y alone moves only `horizon`'s; "
-           "halving the pair's own repeat (texture.spectralPeriodPx) moves only `squeeze`'s; and "
-           "changing the strip element's own count moves only `columns`'s — in every one of the "
-           "four runs the other three handles AND `lead` stood at the exact node they started at, "
-           "which is what `reads: null` on `lead` claims and what the other four's own `reads:` "
-           "prose claims made real"
+          and all(axes[a].get("moved") and axes[a].get("companionsMoved")
+                  and axes[a].get("othersStill") for a in axes),
+          ("on a real pair that casts tilt as its «%s» cue, varying structure.polar.tunnel "
+           "alone moves only `tilt`'s own node; varying structure.horizon.y alone moves only "
+           "`horizon`'s; halving the pair's own repeat (texture.spectralPeriodPx) moves only "
+           "`squeeze`'s; and changing the strip element's own count moves `columns`'s own node "
+           "AND `lead`'s, because `lead` now reads charter shelf 13's golden-angle stagger of "
+           "that very count (plan row S-117, 2026-09-08) — in every one of the four runs the "
+           "handles named no reading of this mutation stood at the exact node they started at, "
+           "which is what the four's own `reads:` prose claims made real"
            % handles.get("baseCue")
            if not handles.get("error") and handles.get("ok") is True
-           else "driver result: %s" % handles))
+           else "driver result: %s — tilt is a carrier and reaches no crossing-voice seat since "
+                "the catalogue filter landed (2026-09-08); no carrier-seat mechanism exists yet to "
+                "cast it through instead, so this row cannot get a live cue to probe (EXPECTED_RED, "
+                "see tests/run_all.py)" % handles))
 
 check("PASS-TILT the host binds uniforms by declared name, never by position or a written list",
       "getUniformLocation(p, u.name)" in LAYER and "gl.uniform1f(U.uFront" not in LAYER

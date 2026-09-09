@@ -742,6 +742,11 @@
       // The floor comes up out of the flat photograph, the room changes hands tile by tile while it
       // stands open, and it lays back down with the second work standing whole.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       // WHERE THIS STANDS ON THE CHARTER'S SHELF. The vocabulary table of lab/CROSSING-HISTORY.md
       // carries this module by name with its level already read — SURFACE+CELL — and that row is
       // carried here rather than re-decided:

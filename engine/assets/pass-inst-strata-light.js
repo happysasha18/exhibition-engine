@@ -456,6 +456,12 @@
       // The departing work comes apart into its two strata, the middle holds a frame neither work
       // has closed, and the arriving work's strata gather into it.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 3,
+      // ~/tlvphotos). A single-work module: the lab source this file was carried from declares
+      // `needs: 1` and draws one work alone, so pass-composer.js may not cast it into an
+      // ordinary crossing voice — only where a future road seats two of these, one per work
+      // (criterion 8), does it stay castable.
+      catalogue: "single-work",
       // CELL IS READ OFF THE MODULE'S OWN PUBLISHED ROW: `lab/data/module-contract.json` gives this
       // module `level: "CELL"`, and until the colour-and-light lane that was the whole of it — the
       // two accompanying voices carried no reading and so never actually moved anything, and a level

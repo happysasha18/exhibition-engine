@@ -290,7 +290,7 @@ check("PASS-DROSTE the port's own numbers stand in the built file, and the ring'
 # doors standing on their own files (BROWSER_ROWS further below) — not a citation of the heading
 # that introduces them.
 check("PASS-DROSTE the module's own single picture becomes an ordered pair, and the doors below say how",
-      "picture" in LABTXT and "'first', 'second'" in LABTXT.replace('"', "'")
+      "params.picture" in LABTXT
       and "picture" not in HANDLES,
       "the module picks the first or the second photograph and never draws the other; this port "
       "declares no `picture` handle at all — read off HANDLES rather than grepped — and instead "

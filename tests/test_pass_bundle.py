@@ -954,7 +954,20 @@ PLANT_CULM = [
 # cited step's own three instruments — and realises `middle`. The three works beside it are the
 # fixture's own strongest RADIAL reading, its strongest BANDED reading, and one that is neither, so
 # the sweep below crosses the three pair classes a route actually meets rather than one lucky pair.
-REAL_A, REAL_B, REAL_SEED = "17851786745424687", "17854888390061165", 3
+#
+# REAL_A AND THE SEED REPOINTED 2026-09-08, REAL_B (THE ORIGINAL INCIDENT'S OWN WORK) KEPT: the
+# original incident's own pair, at the original seed, no longer reaches a culmination at all once
+# `pass-composer.js`'s crossing-voice catalogue filter dropped `tilt` (a carrier) from every seat's
+# candidates — `tilt` was the arrival this exact pair used to cast (`tilt:miracle`, confirmed
+# against the pre-filter module), and the only other bundle that could reach culmination here
+# (`unfold` ground, `boxfold` arrival) is refused by §7's coverage law, both being FILLS_THE_FRAME
+# instruments. That is a fixed seed over a changed candidate pool giving a changed pick, not a
+# changed law (the same class the CONTRASTS repoint in tests/synthetic_works.py names) — so REAL_B
+# stays the original incident's own work, now cast as the arrival side, and REAL_A moves to another
+# real record of the same fixture standing as the ground side, at a seed where the shipped composer
+# still lawfully reaches a culmination AND the plant below still degrades it, which is what row 2
+# needs proven and the original pair can no longer show.
+REAL_A, REAL_B, REAL_SEED = "17975941504745423", "17851786745424687", 2
 RADIAL, BANDED, NEITHER = "17897050660015868", "17847744487144891", "17843153263050281"
 LEAN_CEILING = {"variant": "lean",
                 "budget": {"textures": 2, "textureSlots": 4, "framebuffers": 1, "pingPong": 0,

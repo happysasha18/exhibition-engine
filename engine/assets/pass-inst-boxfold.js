@@ -963,6 +963,11 @@
       // The frame comes apart into the two faces of one solid, the turn carries the eye from the one
       // to the other, and the arriving face lands whole.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123, ~/tlvphotos).
+      // `box` is one of the fourteen named crossings (criterion 2) and this file ships that
+      // module under its engine name `boxfold` (criterion 9) — the requirement's word for
+      // `box` carried onto it unchanged, so pass-composer.js may cast it into a crossing voice.
+      catalogue: "crossing",
       // WHERE THIS STANDS ON THE CHARTER'S SHELF, and the reading is said to be derived. The module
       // carries no row in lab/data/module-contract.json — it postdates that table — so its level is
       // read off its own construction rather than carried from a record.
@@ -1188,7 +1193,7 @@
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/box.js", commit: "11e2db4",
-                    sha256: "8d57315003f0bbc1e5c430b15db9504bd62c167c1a6c875defc2d57df6b8f8c4" },
+                    sha256: "3740dd15999c98a11fa070614ae8a828558276c3c01a3a8ee17cbd95228bf0c1" },
       // HOW WELL THIS INSTRUMENT SUITS A PAIR (2026-08-18, his word of 09:51 and its sharpening at
       // 09:53). An instrument no longer answers WHETHER it takes a pair — it answers how well it
       // suits one, so a poor fit is still playable and still explains itself. The arithmetic runs in

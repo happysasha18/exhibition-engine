@@ -194,8 +194,8 @@ RED_SEED_RANGE = list(range(1, 121))
 
 if not NODE:
     for _n in (
-        "tilt · barred from the ground by mustFill (:2601-2604) — GREEN, a real pair now casts it",
-        "tilt · red-on-bug — the pre-fix order formula never casts it, over 120 seeds",
+        "pour · barred from the ground by mustFill (:2601-2604) — GREEN, a real pair now casts it",
+        "pour · red-on-bug — the pre-fix order formula never casts it, over 120 seeds",
         "overlay · barred from the ground by mustFill (:2601-2604) — GREEN, a real pair now casts it",
         "overlay · red-on-bug — the pre-fix order formula never casts it, over 120 seeds",
         "parquet · barred from the arrival by standsAbove (:2601-2604) — GREEN, a real pair now "
@@ -209,34 +209,46 @@ if not NODE:
     ):
         skip(_n, "node is not on this machine")
 else:
-    # ======================================================================================= TILT
-    # Real pair, kinds=["strip"] (the ground's own cast, mustFill always true there — pass-inst-
-    # tilt.js declares `cuts: ["strip"]`). tilt writes alpha (coverage.writes: true in its own
-    # manifest), so `FILLS_THE_FRAME.tilt` is false and `mustFill` demotes it every time. weave and
-    # wind are the only two `strip`-cutters that DO fill the frame, so under the pre-fix code they
-    # are the whole of tier 0 and always non-empty — tilt could never be drawn regardless of fit.
-    T_A, T_B, T_SEED = "17855281635628600", "17997183340574989", 12
+    # ======================================================================================= POUR
+    # Real pair, kinds=["strip"] (the ground's own cast, mustFill always true there). This row used
+    # to stand on `tilt` (pass-inst-tilt.js declares `cuts: ["strip"]`) and was repointed on
+    # 2026-09-08: `tilt` is a carrier (SPEC.md Requirement 123 criterion 4, the curator's own
+    # 12:52–13:03 removal) and pass-composer.js's `CROSSING_INSTRUMENTS` now keeps it off every
+    # crossing-voice cast outright, so no seed can ever put it at the head of THIS ranking again —
+    # that is the fix this repository landed the same day, not a regression of Cause A's own
+    # mechanism. `pour` stands in its place: it also cuts `strip` and also writes alpha
+    # (coverage.writes: true), so `FILLS_THE_FRAME.pour` is false and `mustFill` demotes it every
+    # time exactly as it demoted tilt. weave and wind are the only two `strip`-cutters that DO fill
+    # the frame, so under the pre-fix code they are the whole of tier 0 and always non-empty — pour
+    # could never be drawn regardless of fit. (Found by direct search over the current, filtered
+    # roster: tests/fixture_pass_works.json, seeds 1-33.)
+    T_A, T_B, T_SEED = "17843080526947498", "17843153263050281", 12
     tilt_green = cast_ids(T_A, T_B, ["strip"], True, False, [T_SEED])
-    check("tilt · barred from the ground by mustFill (:2601-2604) — GREEN, a real pair now casts it",
-          tilt_green == ["tilt"],
+    check("pour · barred from the ground by mustFill (:2601-2604) — GREEN, a real pair now casts it",
+          tilt_green == ["pour"],
           "castForKindsRanked(['strip'], %s, %s, mustFill=true, seed=%d) head = %s"
           % (T_A, T_B, T_SEED, json.dumps(tilt_green)))
 
     tilt_red = cast_ids(T_A, T_B, ["strip"], True, False, RED_SEED_RANGE, plants=PLANT_ORDER)
     if isinstance(tilt_red, dict) and tilt_red.get("missed"):
-        skip("tilt · red-on-bug — the pre-fix order formula never casts it, over 120 seeds",
+        skip("pour · red-on-bug — the pre-fix order formula never casts it, over 120 seeds",
              "the plant's own anchor text is not in the shipped source")
     else:
-        check("tilt · red-on-bug — the pre-fix order formula never casts it, over 120 seeds",
-              "tilt" not in tilt_red,
-              "same pair, seeds 1-120, pre-fix order formula: tilt appears %d time(s)"
-              % tilt_red.count("tilt"))
+        check("pour · red-on-bug — the pre-fix order formula never casts it, over 120 seeds",
+              "pour" not in tilt_red,
+              "same pair, seeds 1-120, pre-fix order formula: pour appears %d time(s)"
+              % tilt_red.count("pour"))
 
     # ==================================================================================== OVERLAY
     # kinds=["band"] (overlay's own real cut, after cause A item 3 dropped its dead `field` claim).
     # overlay writes alpha too. waterline is the ONLY `band`-cutter that fills the frame, so it
-    # alone is tier 0 under the pre-fix code and overlay can never be drawn.
-    O_A, O_B, O_SEED = "17945678195417816", "18006107842248584", 14
+    # alone is tier 0 under the pre-fix code and overlay can never be drawn. Repointed 2026-09-08:
+    # `CROSSING_INSTRUMENTS` (this repository's own catalogue filter) drops `carrier` and
+    # `standing` instruments (`tilt`, `lens`, `hero`) out of every tier-2 pool, which moves the
+    # weighted die's outcome at a fixed seed even where the winning candidate itself is untouched
+    # by the filter; the old anchor no longer lands on `overlay` for that reason alone, and the
+    # pair+seed below — found by the same search against the current, filtered roster — does.
+    O_A, O_B, O_SEED = "17843080526947498", "17845467199690102", 14
     overlay_green = cast_ids(O_A, O_B, ["band"], True, False, [O_SEED])
     check("overlay · barred from the ground by mustFill (:2601-2604) — GREEN, a real pair now "
           "casts it",
@@ -298,7 +310,7 @@ else:
     # non-folding ring rival". droste/grid-colour/hero/kaleidoscope/lens/studio/tunnel all cut ring
     # without folding, so they are always tier 0 and non-empty; under the pre-fix single-tier roll
     # planet (tier 1) could never be drawn regardless of fit.
-    PL_A, PL_B, PL_SEED = "17843153263050281", "18324823441037344", 33
+    PL_A, PL_B, PL_SEED = "17843080526947498", "17843153263050281", 12
     planet_green = cast_ids(PL_A, PL_B, ["ring"], False, False, [PL_SEED])
     check("planet · demoted a whole tier as a world-fold under a no-miracle role (:2585, "
           ":2609-2664) — GREEN, a real pair now casts it",

@@ -872,6 +872,11 @@
       // The photograph comes apart from the frame it hangs in and becomes a place; the arriving work
       // rises out of that place's own centre; and it lands flat.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       // WHERE THIS STANDS ON THE CHARTER'S SHELF, and the two readings that decide it.
       //   · WORLD — the flat frame becomes a round place standing in its own light, seen from
       //     outside it, and the arriving work enters through that place's singular point.
@@ -1078,7 +1083,7 @@
       // 2026-08-18: a reading is never grounds for refusing a visitor a crossing (his 09:51).
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/planet.js", commit: "4952bfe",
-                    sha256: "0782a8bc4b7cb35e11cc35966f33695a601789eb1aee8f3a2ea19e205384eb3e" },
+                    sha256: "e5d9d27fc1956a9b85ca286d06601bcbb088291afa75fd4c167649f698750b16" },
       readiness: "production-ready",
     };
 

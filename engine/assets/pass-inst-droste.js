@@ -686,6 +686,11 @@
       // The photograph comes apart into copies of itself, the works exchange on a ring in the wound
       // middle, and the arriving work unwinds whole.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       // WHERE THIS STANDS ON THE CHARTER'S SHELF: SURFACE, his own standing verdict in the
       // vocabulary table of lab/CROSSING-HISTORY.md. The whole frame becomes one wound surface; no
       // cell of it lives a life of its own, the copies being the same surface at other scales. CELL

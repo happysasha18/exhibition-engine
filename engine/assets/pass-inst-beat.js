@@ -571,6 +571,11 @@
       // The departing work loses lobe after lobe, the middle is a field belonging to neither, and
       // the arriving work gathers lobe by lobe out of the same field.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       // WHERE THIS STANDS ON THE CHARTER'S SHELF: SURFACE, which is what the module's own contract
       // row publishes for it (lab/data/module-contract-new.json, `beat`.level). One field runs over
       // the whole frame and its value at a point decides whose that point is; no cell of the frame

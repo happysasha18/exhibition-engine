@@ -620,9 +620,26 @@
                       + "interfered one the overlay and the grid-and-colour cut carry, the "
                       + "crystallized one the pour's own column order carries — and a score names "
                       + "which of them this crossing makes, so this is a plan's word"],
-    scale: ["measured", "the ratio of the two works' own cutting steps — structure.ownDevice.stepPx "
-                        + "of the arriving work over the departing one's, with "
-                        + "structure.grid.periodPx where no device was derived"],
+    // `scale` (overlay's own composite-size handle) NO LONGER DRIVES (2026-09-08). The reading —
+    // the ratio of the two works' own cutting steps, structure.ownDevice.stepPx of the arriving
+    // work over the departing one's, structure.grid.periodPx where no device was derived — is real;
+    // what changed is that the composer stopped asking for it. Across the full synthetic sweep —
+    // every ordered pair, every route role, the whole seed span, 11,900 castings — it asked for the
+    // instrument's own rest, 1.0, all 11,900 times (composer-invisible-handles.md): the ratio never
+    // once carried the composite off its own default, so the branch of arithmetic that computed it
+    // (pass-composer.js's overlay branch, beside `wanted.turn`) is gone. This row stays, in the
+    // `unmeasured` word `drift` two screens down already uses for the same shape of fact — a real
+    // reading, deliberately not asked for — because `tracksFor`'s own class law still owes every
+    // handle this instrument's manifest declares a row saying what became of it; dropping the row
+    // as well as the arithmetic would answer "what reads this" with silence instead of with a
+    // reason.
+    scale: ["unmeasured", "the ratio of the two works' own cutting steps — structure.ownDevice.stepPx "
+                          + "of the arriving work over the departing one's, with "
+                          + "structure.grid.periodPx where no device was derived — is the reading, "
+                          + "and it is deliberately not driven: across the full synthetic sweep the "
+                          + "composer asked for the instrument's own rest, 1.0, on every one of "
+                          + "11,900 castings (composer-invisible-handles.md), so nothing this row "
+                          + "could compute would ever leave the instrument's own default"],
     mixPeriod: ["measured", "structure.ownDevice.stepPx over the departing work's own frame side, "
                             + "so the field deciding which places lean to which work leans along "
                             + "that work's own structure; structure.grid.periodPx where no device "
@@ -676,15 +693,29 @@
     press: ["unmeasured", "the hand's own pressure, which no build-time file measures"],
     // THE FOLDING INSTRUMENT'S OWN SEVEN, checked against the class law here rather than carried
     // over as they were handed. His 19:13 word lifted to the class at 19:21: a handle that cannot
-    // name a measurement is a FINDING, not a constant. Three that arrived as «unmeasured» name one
-    // after all — `depth` reads how strongly the departing work already reads as a corridor,
-    // `dip` reads that work's own measured horizon, and `lead` is the finger count read from one
-    // published range onto another and turned over, so a joint of many fingers bites shallow and
-    // one of few bites deep and the joint's own travel holds. One names a different measurement
-    // than the row it was handed in: `fingers` was written against `structure.grid.countFrom`,
-    // which is stripped before a work record reaches the engine, and the period that count is
-    // derived from is not — so the same number is derived here from the number that travels. And
-    // one is a real gap, stated rather than filled: see `seam`.
+    // name a measurement is a FINDING, not a constant. Two that arrived as «unmeasured» name one
+    // after all — `depth` reads how strongly the departing work already reads as a corridor, and
+    // `dip` reads that work's own measured horizon. One is a real gap, stated rather than filled:
+    // see `seam`.
+    //
+    // `lead` AND `fingers` STOPPED DRIVING (2026-09-08), and their rows below say so rather than
+    // vanishing: `tracksFor`'s own class law owes every handle this instrument's manifest declares
+    // a row naming what became of it, the same law that keeps `drift` two screens up as `unmeasured`
+    // instead of absent. `lead` was the finger count read from one published range onto another and
+    // turned over, so a joint of many fingers bit shallow and one of few bit deep; `fingers` named a
+    // different measurement than the row it was handed in, `structure.grid.countFrom` stripped
+    // before a work record reaches the engine, so it read the frame side over the grid period the
+    // count is derived from instead. Both rows named real measurements — nothing above is wrong
+    // about that. At the box's own doors and quarter points driving either moved the frame not at
+    // all; at the one point of the travel where either draws anything, driving `fingers` alone moved
+    // it a mean of 1.93 of 255 and `lead` alone 1.61 of 255, both under this project's own 6-of-255
+    // seam floor (composer-invisible-handles.md, `tests/test_pass_overlay.py`'s `SEAM`). The
+    // arithmetic that computed them (the boxfold branch, below) is gone; both handles stay on the
+    // instrument at their own published rest. `lead` moves from the bare key it held to the scoped
+    // `boxfold.lead`, because every other instrument that still drives a `lead` of its own —
+    // `beat`, `gates`, `grid-colour`, `tilt`, `waterline` — already owns a scoped row of its own, so
+    // a bare `lead` row would no longer be the one honest answer to "what does a `lead` handle
+    // read", it would be boxfold's answer standing in for five unrelated ones.
     //
     // A NOTE TRAVELS IN EVERY SCORE, SO IT IS A SENTENCE AND NOT AN ESSAY. Each of these strings is
     // written into every node the handle drives, and the first draft of this block put 823 of the
@@ -698,9 +729,17 @@
     depth: ["measured", "each work's own corridor reading, structure.polar.tunnel — how far the "
                         + "perspective runs, and how deep a room the floor stands in"],
     dip: ["measured", "the departing work's own measured horizon, structure.horizon.y"],
-    lead: ["measured", "the finger count, read off its own range onto this one and turned over"],
-    fingers: ["measured", "the departing work's repeat across the crease: its frame side over "
-                          + "structure.grid.periodPx"],
+    fingers: ["unmeasured", "the departing work's own repeat across the crease, its frame side over "
+                            + "structure.grid.periodPx, is the reading, and it is deliberately not "
+                            + "driven: at the one point of the box's own travel where it draws "
+                            + "anything at all it moves the frame under this project's own seam "
+                            + "floor, and at every door and quarter point it moves nothing"],
+    "boxfold.lead": ["unmeasured", "the finger count read off its own published range onto this "
+                                   + "one and turned over is the reading, and it is deliberately "
+                                   + "not driven: at the one point of the box's own travel where it "
+                                   + "draws anything at all it moves the frame under this project's "
+                                   + "own seam floor, and at every door and quarter point it moves "
+                                   + "nothing"],
     // THE GAP THAT WAS REAL AND IS NOW CLOSED (2026-08-26). Where along the turn the departing work
     // falls into two regions is measured in lab/cut-lines.py, and until tonight it was STRIPPED
     // before the engine saw it: a record carried `structure.regions.count` and `.score` and no
@@ -967,7 +1006,13 @@
                            + "motif's fixed band"],
     "gates.press": ["unmeasured", "how hard the two leaves press their teeth together. It is a "
                                   + "property of the joint rather than of either photograph"],
-    "gates.lead": ["unmeasured", "how far apart the two leaves' own departures stand"],
+    "gates.lead": ["measured", "the golden-angle stagger of the departing work's own tooth "
+                              + "count, charter shelf 13's stagger instrument, so the two "
+                              + "leaves' own departures fall out of step. `teeth` two rows up "
+                              + "already reads the same count for how many teeth the jamb cuts; "
+                              + "this is the shelf's stagger operation on it, exactly as the "
+                              + "mesh's `order`, the sheet's `stagger`, the grid's `stagger` and "
+                              + "the tide's `order` already take it on their own counts"],
 
     // ---- the grid-and-colour instrument ----
     countFrom: ["measured", "the departing work's own frame side over the step it was cut at, "
@@ -1104,7 +1149,11 @@
     columns: ["measured", "the band family each work's own structure was cut into — the same "
                           + "measured strip count the fabric's ribbons are cut on — which is how "
                           + "many columns the handover front is broken into"],
-    "tilt.lead": ["unmeasured", "how far apart the front's own columns stand in their departures"],
+    "tilt.lead": ["measured", "the golden-angle stagger of the pair's own band count, charter "
+                             + "shelf 13's stagger instrument, so the boundary front's own "
+                             + "columns fall out of step instead of sweeping as one straight "
+                             + "line. `columns` above already reads the same count; this is the "
+                             + "shelf's stagger operation on it"],
 
     // ---- the waterline instrument ----
     // TWO SCOPED ROWS AGAIN, and the port spotted this one itself: the drifting instrument's
@@ -1202,15 +1251,29 @@
                                    + "how far a visitor's own hand would have pulled it in"],
     "studio.twirlOn": ["module-rest", "the module's own opening pose: the twirl operation stands off "
                                       + "until a score switches it on"],
-    "studio.polarOn": ["module-rest", "the module's own opening pose: the planet operation stands on"],
+    "studio.polarOn": ["measured", "structure.polar.planet, the stronger of the pair's two "
+                                   + "readings, on the same boundary the module's own shader "
+                                   + "already reads every `*On` handle at, `> 0.5` "
+                                   + "(pass-inst-studio.js:384-422). `polarSpread` two rows up "
+                                   + "already reads the same measure for how far the operation "
+                                   + "opens; this is the same reading answering whether it opens "
+                                   + "at all"],
     "studio.polarFlip": ["module-rest", "the module's own declared default: ground in rather than "
                                         + "sky in — no reading says which way a visitor would flip it"],
-    "studio.mirrorOn": ["module-rest", "the module's own opening pose: the mirror operation stands on"],
+    "studio.mirrorOn": ["measured", "symmetry.reflection.leftOntoRight.reading, the stronger of "
+                                    + "the pair's two readings, on the module's own already-shipped "
+                                    + "boundary, `> 0.5` (pass-inst-studio.js:384-422). Both works "
+                                    + "carry this reading with genuine spread and it reaches no "
+                                    + "other handle in the fleet"],
     "studio.mirrorMode": ["module-rest", "the module's own opening pose's own mode, left-right — no "
                                          + "reading says which of the mirror's three modes a visitor "
                                          + "would have chosen"],
-    "studio.kalOn": ["module-rest", "the module's own declared default: the kaleidoscope operation "
-                                    + "stands off until a score switches it on"],
+    "studio.kalOn": ["measured", "structure.rotational.score, the stronger of the pair's two "
+                                 + "readings, on the module's own already-shipped boundary, "
+                                 + "`> 0.5` (pass-inst-studio.js:384-422). `kalN` two rows up "
+                                 + "already reads structure.rotational.n for how many wedges; "
+                                 + "this is the sibling reading answering whether the operation "
+                                 + "opens at all"],
     "studio.kalRot": ["module-rest", "the module's own rest of nothing turned — the kaleidoscope's "
                                      + "own drift off the handed second carries the operation's "
                                      + "breath instead, exactly as the module's own pointer-free rest "
@@ -1766,9 +1829,52 @@
       return (kind && CUTS_ON[kind]) ? CUTS_ON[kind] : [];
     }
 
-    // Every instrument the collection publishes at all, in one settled order.
+    // Every instrument the collection publishes at all, in one settled order. This is kept as the
+    // FULL roster — every other reading in this file that asks "does the collection ship an
+    // instrument named X" still gets a straight answer — and is no longer what the crossing-voice
+    // cast draws from; see `CROSSING_INSTRUMENTS` immediately below.
     var ALL_INSTRUMENTS = Object.keys(INSTRUMENTS).sort().filter(function (iid) {
       return !!MANIFESTS[iid];
+    });
+
+    // THE ROSTER THE CROSSING-VOICE CAST DRAWS FROM (`castForKindsRanked` and `bestFilling`,
+    // below — every call site of either passes slot "pivot", "travel" or "arrival", so both are a
+    // crossing voice in Requirement 122's own sense). SPEC.md Requirement 123
+    // (~/tlvphotos/SPEC.md:7317) partitions the arsenal into four catalogues — crossings,
+    // single-work modules, carriers, standing instruments. 2026-09-08's own watched scores showed
+    // a crossing voice cast from an instrument that is none of those things — `lens` (tagged
+    // `outsideTheCrossingArsenal`) seated as a pivot, `tilt` (a carrier, "a carrier over anything
+    // else", removed from the arsenal the same day) seated as an arrival — which is the nonsense
+    // the owner named.
+    //
+    // WHAT THIS EXCLUDES: `carrier` and `standing` alone. Neither joins two works of its own —
+    // a carrier leans on another module's live picture, a standing instrument does its own job
+    // outside the crossing arsenal entirely (a gallery voice, the page's own opening) — so neither
+    // can stand at a door the way Requirement 122 requires.
+    //
+    // WHAT THIS ADMITS, AND WHY SINGLE-WORK STAYS IN: a single-work module draws a real picture and
+    // today is the ONLY road the colour-and-light voices (`grid-colour`, `strata-light`) have —
+    // Requirement 123 criterion 8 records that the engine is meant to seat two single-work voices,
+    // one per work, and that road is unbuilt (the criterion's own GAP). Excluding single-work here
+    // before that road exists would take colour out of the product for no gain the requirement
+    // itself asks for, so a single-work module stays castable exactly as it is today — one voice
+    // standing over the whole pair rather than one per work — and that is a recorded gap, not a
+    // silent one: the day the two-voice road lands, this admission is the line to revisit.
+    //
+    // THE DECLARATION IS THE INSTRUMENT'S OWN, exactly as `cuts` already is: every `pass-inst-*.js`
+    // now publishes a `catalogue` field beside `levels` and `roles`, so this is the one-line filter
+    // the comment used to leave unwritten, the identical shape `WORLD_FOLD_INSTRUMENTS` above
+    // stands as. No list of names is typed here — an instrument that changes catalogue changes what
+    // this filter admits without a second edit.
+    //
+    // A GROUND WHOSE FILTERED ROSTER IS EMPTY IS NOT A ROAD THIS TAKES: crossings and single-work
+    // modules together are the overwhelming majority of the fleet and `CROSSING_INSTRUMENTS` is
+    // never empty, and the ranking below already has its own fallback for a pair no candidate cuts
+    // well — the tiers still rank every candidate that merely fails to cut (`base = cuts ? 0 : 2`,
+    // `for` loop below), so a passage still plays.
+    var CROSSING_INSTRUMENTS = ALL_INSTRUMENTS.filter(function (iid) {
+      var c = MANIFESTS[iid].catalogue;
+      return c !== "carrier" && c !== "standing";
     });
 
     // ---------------------------------------------------------------------------------------
@@ -2577,8 +2683,8 @@
           if (cutters.indexOf(iid2) < 0) cutters.push(iid2);
         });
       }
-      for (i = 0; i < ALL_INSTRUMENTS.length; i++) {
-        iid = ALL_INSTRUMENTS[i];
+      for (i = 0; i < CROSSING_INSTRUMENTS.length; i++) {
+        iid = CROSSING_INSTRUMENTS[i];
         // THE LEVELS LAW EXCLUDES OUTRIGHT ONLY WHERE THE CANDIDATE WOULD OWN NOTHING AT ALL
         // (2026-08-19, the ownership repair). Until today this test dropped a candidate the moment
         // it shared ANY level with ANY already-placed, time-overlapping voice, which is stricter
@@ -5690,10 +5796,14 @@
     // voice's only level and leaves it drawing a picture it drives nothing of, which is the one
     // thing no cue of a score may end up doing. The swap runs AFTER the voices above are cast, so
     // this is the only place that can know it.
+    // THIS ALSO DRAWS ON `CROSSING_INSTRUMENTS` RATHER THAN THE FULL ROSTER (the same law as
+    // `castForKindsRanked` above): it stands in for the ground/pivot voice when a stack is left
+    // with none, and the ground is a crossing voice exactly as the pivot cast is, so a carrier or
+    // a standing instrument may not fill in here either.
     function bestFilling(fromW, toW, avoid, noMiracle, seed, key, sole) {
       var pool = [], i, iid;
-      for (i = 0; i < ALL_INSTRUMENTS.length; i++) {
-        iid = ALL_INSTRUMENTS[i];
+      for (i = 0; i < CROSSING_INSTRUMENTS.length; i++) {
+        iid = CROSSING_INSTRUMENTS[i];
         if (!FILLS_THE_FRAME[iid]) continue;
         if ((avoid || []).indexOf(iid) >= 0) continue;
         if (noMiracle && spendsTheMiracle(iid)) continue;
@@ -6866,6 +6976,7 @@
     // record; the fill below names, handle by handle, which of these each one reads.
     function measuredParts(work) {
       var st = work.structure || {}, tex = work.texture || {}, mot = work.motifs || {};
+      var sym = work.symmetry || {};
       var side = Number(work.frameSide) || 0;
       var box = (st.dominantObject || {}).bbox || [0, 0, 0, 0];
       var ring = setFor(work, "ring"), strip = setFor(work, "strip");
@@ -6944,6 +7055,10 @@
         twirl: Number((st.polar || {}).twirl) || 0,
         rotationalN: Number((st.rotational || {}).n) || 0,
         rotationalScore: Number((st.rotational || {}).score) || 0,
+        // HOW STRONGLY THE WORK FOLDS ACROSS A LEFT-RIGHT MIRROR — the darkroom's own switch
+        // boundary reads this at > 0.5 already (pass-inst-studio.js:384-422); nothing here invents
+        // a threshold, only carries the reading through.
+        reflectLR: Number(((sym.reflection || {}).leftOntoRight || {}).reading) || 0,
         horizonY: ((st.horizon || {}).y === null || (st.horizon || {}).y === undefined)
           ? null : Number(st.horizon.y),
         // HOW STRONGLY THE WORK CARRIES A WATERLINE OF ITS OWN, off the record's own measured
@@ -8195,22 +8310,18 @@
           // works' own structure instead of being laid across it.
           var bx = fromP.ends.banding;
           if (bx !== undefined && bx !== null) wanted.axis = num(bx[2]) ? 1 : 0;
-          // HOW MANY FINGERS STAND ALONG THE CREASE: the departing work's own measured repeat
-          // across it, its frame side over the grid period. The collection's own count field is
-          // stripped before a record reaches the engine; the period it is derived from is not.
-          if (mf.gridCount > 0) {
-            wanted.fingers = Math.round(Math.min(HANDLE_SPECS.boxfold.fingers[1],
-                                                 Math.max(HANDLE_SPECS.boxfold.fingers[0],
-                                                          mf.gridCount)));
-          }
-          // HOW DEEP THE JOINT BITES, read from the finger count's own published range onto this
-          // handle's and turned over: many fingers bite shallow, few bite deep, so the joint's own
-          // travel holds whatever the count. Two published spans and no third number.
-          if (wanted.fingers !== undefined) {
-            var lo = num(HANDLE_SPECS.boxfold.lead[0]), hi = num(HANDLE_SPECS.boxfold.lead[1]);
-            wanted.lead = flt(r4(lo + hi
-              - betweenSpans("boxfold", "fingers", "lead", num(wanted.fingers))));
-          }
+          // `fingers` AND `lead` NO LONGER DRIVE HERE (2026-09-08). `fingers` stood as the
+          // departing work's own measured repeat across the crease, its frame side over the grid
+          // period; `lead` stood as that count read off its own published range onto the joint's
+          // and turned over. Both named real measurements, and driving them costs a branch of
+          // arithmetic on every one of the box's own castings. What it buys does not clear this
+          // project's own 6-of-255 seam floor (`tests/test_pass_overlay.py`'s `SEAM`): at the box's
+          // own doors and quarter points driving either moved the frame not at all, and at the one
+          // point of the travel where either draws anything, `fingers` alone moved it a mean of
+          // 1.93 of 255 and `lead` alone 1.61 of 255 (composer-invisible-handles.md). Both handles
+          // stay on the instrument at their own published rest; their rows in HANDLE_SOURCE above
+          // (plain `fingers`, scoped `boxfold.lead`) stay too, now `unmeasured`, because a handle
+          // this instrument's manifest declares still owes a row saying what became of it.
           // HOW DEEP THE PERSPECTIVE IS, off each work's own corridor reading — the identical field
           // and the identical sense the tunnel, parquet, planet and tilt branches already read this
           // reading with, all of them arrays that travel from the departing work's own depth to the
@@ -8711,12 +8822,20 @@
             wanted.exposure = flt(r4(clamp01(expCap * voiceReach(expFloor, apartHere))));
             wanted.presence = flt(r4(clamp01(presCap * voiceReach(presFloor, apartHere))));
           }
-          // CHARTER SHELF 10, IN THE TWO RHYTHMS THEMSELVES. The third picture is the two works'
-          // interference, so how large the arriving work stands against the departing one is the
-          // RATIO of their own cutting steps, and how far it is turned is the ANGLE between their
-          // two lattices. Near-matched rhythms at a small angle are what yield the slow large beats.
+          // CHARTER SHELF 10, IN THE RHYTHMS' OWN ANGLE. The third picture is the two works'
+          // interference, and how far it is turned is the ANGLE between their two lattices:
+          // near-matched rhythms at a small angle are what yield the slow large beats.
+          //
+          // HOW LARGE THE ARRIVING WORK STOOD AGAINST THE DEPARTING ONE stood here too, the RATIO
+          // of their own cutting steps, from 2026-08-17 to 2026-09-08. Across the full synthetic
+          // sweep — every ordered pair, every route role, the whole seed span, 11,900 castings —
+          // the composer asked for the instrument's own rest, 1.0, all 11,900 times
+          // (composer-invisible-handles.md): the ratio never once carried the composite off its
+          // own default. A line of arithmetic that only ever hands back the rest it started from
+          // buys nothing, so the line is gone; its row in HANDLE_SOURCE (`scale`, above) stays,
+          // now `unmeasured`, because a handle a manifest declares still owes a row saying what
+          // became of it. The handle stays on the instrument at its own published rest.
           if (mf.latticePx > 0 && mt.latticePx > 0) {
-            wanted.scale = flt(r4(mt.latticePx / mf.latticePx));
             wanted.turn = flt(r4(Math.abs(mt.latticeAngleDeg - mf.latticeAngleDeg) % 180.0));
           }
           // WHERE THE MIX FIELD LEANS, along the DEPARTING work's own structure: the step that work
@@ -9011,6 +9130,10 @@
             var teethSpec = HANDLE_SPECS.gates.teeth;
             wanted.teeth = [Math.round(gatesClamp(teethSpec, mf.gridCount)),
                            Math.round(gatesClamp(teethSpec, mt.gridCount))];
+            // HOW FAR APART THE TWO LEAVES' OWN DEPARTURES STAND — charter shelf 13's golden-angle
+            // stagger again, taken on the tooth count just above, so a jamb cut into many teeth
+            // parts less in step than one cut into few.
+            wanted.lead = flt(r4(gatesClamp(HANDLE_SPECS.gates.lead, goldenStagger(mf.gridCount || mt.gridCount))));
           }
           // WHICH WAY THE SLOT STANDS, off the gate's OWN measured axis, motifs.gateAxis — the
           // slot's own reading rather than the banding axis this branch stood in for it before
@@ -9349,6 +9472,11 @@
               return Math.round(Math.min(num(columnsSpec[1]), Math.max(num(columnsSpec[0]), v)));
             };
             wanted.columns = [columnsClamp(mf.strips || mt.strips), columnsClamp(mt.strips || mf.strips)];
+            // HOW FAR APART THE FRONT'S OWN COLUMNS STAND IN THEIR DEPARTURES — charter shelf 13's
+            // golden-angle stagger again, taken on the same band count `columns` just read.
+            var leadSpec = HANDLE_SPECS.tilt.lead;
+            wanted.lead = flt(r4(Math.min(num(leadSpec[1]), Math.max(num(leadSpec[0]),
+                                          goldenStagger(mf.strips || mt.strips)))));
           }
         } else if (instr === "waterline") {
           // THE TWO LINES THE CROSSING TRAVELS BETWEEN — each work's own measured horizon, which is
@@ -9599,6 +9727,22 @@
             var spreadSpec = HANDLE_SPECS.studio.polarSpread;
             wanted.polarSpread = flt(r4(num(spreadSpec[1])
                                         - clamp01(world) * (num(spreadSpec[1]) - num(spreadSpec[0]))));
+          }
+          // WHETHER EACH OPERATION APPLIES AT ALL, not merely how far it goes once it does, off the
+          // same three readings the amounts just above already take: `world` reads
+          // structure.polar.planet, `reflectLR` reads symmetry.reflection.leftOntoRight.reading and
+          // `rotationalScore` reads structure.rotational.score. The boundary is the module's own,
+          // already shipped: pass-inst-studio.js:384-422 reads every `*On` handle as `> 0.5`, so
+          // nothing here invents a threshold — the composer only answers it with the pair's own
+          // reading instead of the chain's fixed default. OWNED, NOT SOFTENED (owner's word,
+          // 2026-09-08): the discontinuity at that 0.5 stands as it is, because the boundary
+          // belongs to the module and blurring it would be a number taken out of the air.
+          if (mf.planet > 0 || mt.planet > 0) wanted.polarOn = world > 0.5 ? 1 : 0;
+          if (mf.reflectLR > 0 || mt.reflectLR > 0) {
+            wanted.mirrorOn = Math.max(mf.reflectLR, mt.reflectLR) > 0.5 ? 1 : 0;
+          }
+          if (mf.rotationalScore > 0 || mt.rotationalScore > 0) {
+            wanted.kalOn = Math.max(mf.rotationalScore, mt.rotationalScore) > 0.5 ? 1 : 0;
           }
           // WHERE THE CROP'S OWN PAN AND THE MIRROR'S OWN FOLD LINE STAND: the midpoint of the two
           // works' own measured radial centres, offset from the frame's own middle exactly as hero's
@@ -9863,8 +10007,21 @@
             // is the handle's own published floor and ceiling, which is what a door value always
             // was; for every cue whose door still names `mix` this writes the identical two numbers.
             var mixSpan = HANDLE_SPECS[instr].mix;
+            // THE DIAL RIDES THE PASSAGE'S OWN GLOBAL PROGRESS, NOT THIS CUE'S OWN WINDOW, UNLESS
+            // THIS CUE'S OWN WINDOW IS THE WHOLE PASSAGE. His word of 2026-09-08, watching the
+            // composer tab: a work that has left does not come back. `cueProgress` restarts at 0
+            // the instant THIS cue's own window opens, so a cue seated late replayed the departing
+            // work whole at that late instant — the flash back to the first work his own eye
+            // caught. `c.window` above gives exactly one cue, the pivot, a window that always is
+            // `[0, 1]` (Requirement 122) — the only cue whose own local door is the passage's own
+            // door. Every other cue's own local door is a manufactured one with no station in the
+            // passage, so its dial instead reads wherever the passage's own crossing already
+            // stands — never its own replayed start.
+            var ownsWholePass = num(c.window[0]) <= 1e-6
+              && num(c.window[1]) >= (duration / 1000.0 - 1e-6);
             nodes[nodeName] = { op: "mix", a: flt(num(mixSpan[0])), b: flt(num(mixSpan[1])),
-                                t: { op: "curve", name: doorShape, in: { source: "cueProgress" } },
+                                t: { op: "curve", name: doorShape,
+                                     in: { source: ownsWholePass ? "cueProgress" : "progress" } },
                                 note: why };
             return;
           }

@@ -618,6 +618,11 @@
       // class: one work sinks under a rising horizon while the other rises out of its own
       // reflection, and the middle is a frame holding both at once.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       // READ OFF THE MODULE'S OWN CONSTRUCTION, and said to be derived. Neither module-contract file
       // carries a `waterline` row, so the two levels below come from the header of
       // lab/effects/waterline.js:

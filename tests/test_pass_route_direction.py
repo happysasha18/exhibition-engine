@@ -143,6 +143,14 @@ CORPUS_PATH.write_text(json.dumps({"works": synthetic_works.corpus(),
 ROSTER = sorted(p.name[len("pass-inst-"):-3]
                 for p in (ROOT / "engine" / "assets").glob("pass-inst-*.js"))
 
+# SPEC.md Requirement 123's own catalogue per instrument, read off the frozen fixture's own manifest
+# projection (tests/fixture_pass_composed.json) rather than typed — the same source
+# pass-composer.js's CROSSING_INSTRUMENTS filter reads. Used below so fact 1 can ask the honest
+# question when nothing casts an instrument: does it reach no seat because its own catalogue
+# (carrier, standing) admits none, or is that a real regression.
+_fix_composed = json.loads((ROOT / "tests" / "fixture_pass_composed.json").read_text(encoding="utf-8"))
+CATALOGUE = {iid: man.get("catalogue") for iid, man in _fix_composed["consts"]["manifests"].items()}
+
 FACT1 = {i: f"ROUTE fact 1 · {i} · the chooser can cast it at runtime" for i in ROSTER}
 FACT2 = {i: f"ROUTE fact 2 · {i} · every casting above the ground carries a handle away from its "
             f"own neutral" for i in ROSTER}
@@ -216,10 +224,22 @@ if SURVEY:
         seen = SURVEY["seen"].get(iid)
         # ---- fact 1 · the chooser can cast it -------------------------------------------------
         # An instrument nothing casts is a finding and not a skip: it ships, it is loadable, and no
-        # request the chooser can be handed reaches it.
+        # request the chooser can be handed reaches it. WHERE THE CATALOGUE ALREADY SAYS WHY
+        # (2026-09-08): a `carrier`/`standing` instrument is never a candidate for the seat the
+        # chooser fills at all — pass-composer.js's CROSSING_INSTRUMENTS filter excludes it before
+        # the die ever runs — so "nothing cast it" is that fact stated plainly, never a claim of
+        # broken wiring; every other catalogue's "nothing cast it" is still a real finding.
         if not seen:
-            check(FACT1[iid], False,
-                  f"NOTHING CAST IT. Over {_sweep} the chooser never once put «{iid}» in a slot")
+            cat = CATALOGUE.get(iid)
+            if cat in ("carrier", "standing"):
+                cast_detail = (f"NOTHING CAST IT. Over {_sweep} the chooser never once put «{iid}» "
+                               f"in a slot — it is catalogued `{cat}` and reaches no crossing-voice "
+                               f"seat since the catalogue filter landed (2026-09-08); no {cat}-seat "
+                               f"mechanism exists yet to cast it through instead")
+            else:
+                cast_detail = (f"NOTHING CAST IT. Over {_sweep} the chooser never once put «{iid}» "
+                               f"in a slot")
+            check(FACT1[iid], False, cast_detail)
             check(FACT2[iid], False, "nothing cast it, so there is no casting to read a handle off")
             continue
         slots = ", ".join(sorted(seen["slots"], key=int))

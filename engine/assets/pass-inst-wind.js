@@ -548,6 +548,14 @@
       // The departing work goes slack as the gust reaches it, the middle is a frame of rows leaning
       // between two pictures, and the arriving work comes taut behind the front.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO, READ OFF THIS INSTRUMENT'S OWN
+      // CONSTRUCTION rather than off SPEC.md Requirement 123, which names no catalogue for it:
+      // `lab/effects/` holds no wind module (criterion 9), so no lab source stands to carry a
+      // `needs:` count or a criterion-2 listing. What decides it is this file's own header at
+      // :40-41 above: "everything the gust has passed is the arriving photograph, everything
+      // ahead of it is the departing one" — the departing work disassembles behind the front and
+      // the arriving work assembles ahead of it, which is a crossing.
+      catalogue: "crossing",
       // READ OFF THIS INSTRUMENT'S OWN CONSTRUCTION, and said to be read rather than published:
       // there is no lab module for a wind, so no vocabulary table carries a row for it.
       //   · CELL — the frame is cut into rows and each row takes its own share of the push and

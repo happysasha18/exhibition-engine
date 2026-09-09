@@ -677,6 +677,11 @@
       // The picture opens into a rosette, the two works exchange under its deepest fold, and the
       // rosette closes onto the arriving photograph.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       // WHAT THIS INSTRUMENT CUTS ON, declared by the instrument itself. A RING: the wedge tiles
       // outward into mirrored rings about the work's own measured centre, and the ring is the
       // element the composer's `radial` measure cuts on (`KIND_OF_MEASURE.radial`). The composer's
@@ -945,7 +950,7 @@
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/kaleidoscope.js", commit: "4c7dfe4",
-                    sha256: "719088dc474c56fbb0b0a016be5e3312ad9d4d81fe633962b1b3872a3377c285" },
+                    sha256: "bcd85ffb43ca7751754dbf28a84b083dfca40d55f6fef20e1f163baa32f5fd71" },
       readiness: "production-ready",
     };
 

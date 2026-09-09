@@ -737,6 +737,11 @@
     var manifest = {
       id: "weave", api: 1, arity: 2,
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       // CELL, AND THAT IS THE WHOLE OF IT. The ribbons are the cells: `strips` is how many there
       // are, `axis` which way they run, `nMul` their count multiplier, and the three wave handles
       // shape the ribbon edge itself.

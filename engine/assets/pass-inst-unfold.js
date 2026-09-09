@@ -1031,6 +1031,12 @@
       // The sheet comes apart into its own panels, the closed photograph stands while the two works
       // exchange on it, and the second work gathers itself out of the same seams.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 3,
+      // ~/tlvphotos). A single-work module: the lab source this file was carried from declares
+      // `needs: 1` and draws one work alone, so pass-composer.js may not cast it into an
+      // ordinary crossing voice — only where a future road seats two of these, one per work
+      // (criterion 8), does it stay castable.
+      catalogue: "single-work",
       // WHERE THIS STANDS ON THE CHARTER'S SHELF, and the reading is said to be derived.
       //   · CELL — the panels themselves. lab/data/module-contract.json records this module's level as
       //     CELL, and that row is carried here rather than re-decided: the motion is a partition of the

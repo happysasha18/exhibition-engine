@@ -203,9 +203,18 @@ def main():
     # value — the door stops answering to `cueProgress` on every cue at once, which is the plan-level
     # shape of «no LIVE surface ever freezes» broken outright. The source tree is never written to.
     src = COMPOSER.read_text(encoding="utf-8")
+    # THE NEEDLE'S OWN SHAPE MOVED 2026-09-08, and moved with it: his word of 2026-09-08, watching
+    # the composer tab, split this door's source between `cueProgress` (a cue whose own window is
+    # the whole passage) and `progress` (every other cue, reading the passage's own crossing rather
+    # than replaying its own late start) — `ownsWholePass ? "cueProgress" : "progress"` where the
+    # literal `"cueProgress"` alone stood before. The plant still freezes the SAME node — the whole
+    # `op: "mix"` construction that reads either source — to a fixed value, so the law it proves
+    # (every live cue's door stops answering to progress at once) is unchanged; only the text this
+    # plant matches follows the code's own current shape rather than a shape it no longer carries.
     needle = ('nodes[nodeName] = { op: "mix", a: flt(num(mixSpan[0])), b: flt(num(mixSpan[1])),\n'
-              '                                t: { op: "curve", name: doorShape, '
-              'in: { source: "cueProgress" } },\n'
+              '                                t: { op: "curve", name: doorShape,\n'
+              '                                     in: { source: ownsWholePass ? "cueProgress" '
+              ': "progress" } },\n'
               '                                note: why };')
     if needle not in src:
         check(ROW_REDBUG, False, "the plant found nothing to change")

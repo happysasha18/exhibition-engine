@@ -481,6 +481,12 @@
       // centre is where neither work is legible — the chain stands at its own deepest reach — and
       // the arriving work unwinds back down through the same chain across the return leg.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 3,
+      // ~/tlvphotos). A single-work module: the lab source this file was carried from declares
+      // `needs: 1` and draws one work alone, so pass-composer.js may not cast it into an
+      // ordinary crossing voice — only where a future road seats two of these, one per work
+      // (criterion 8), does it stay castable.
+      catalogue: "single-work",
       // THE TWO LEVELS THIS INSTRUMENT ACTS ON, and the levels law's own defect named so it is not
       // repeated: shelf 17 asks every instrument to declare every structural level it acts on, not
       // fewer, and strata-light's own port names the exact miss this one avoids — claiming CELL alone

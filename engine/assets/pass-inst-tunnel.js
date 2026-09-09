@@ -832,6 +832,11 @@
       // The photograph comes apart into a corridor, the arriving work comes up it out of the hole,
       // and the corridor closes on that work standing whole.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       // WHERE THIS STANDS ON THE CHARTER'S SHELF, and the reading is carried rather than derived:
       // lab/CROSSING-HISTORY.md's vocabulary table records his own standing verdict on this module with
       // its level in the same row — SURFACE.
@@ -1030,7 +1035,7 @@
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/tunnel.js", commit: "fc885a3",
-                    sha256: "b10a51b402ae0ddb276297d1773e698d26d3268aec6e1db19ff7e27b224e7e3b" },
+                    sha256: "cf515435904203b498c39ed4cb3daa427a8452ab7769451cba5dd7bdd53ae642" },
       readiness: "production-ready",
     };
 

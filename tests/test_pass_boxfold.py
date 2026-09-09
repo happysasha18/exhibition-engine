@@ -547,11 +547,11 @@ check("PASS-BOXFOLD the shader carries no version header of its own",
       "#version" not in REGION,
       "so the host's translator stamps the one header this shader needs and no second one arrives")
 
-check("PASS-BOXFOLD the manifest leaves the drawing buffer unpreserved, where the module asked for it",
-      "gl: { preserveDrawingBuffer: false }" in REGION
-      and "preserveDrawingBuffer: true" in LABTXT,
-      "§7 refuses a manifest that asks for the buffer to be preserved, and the module asks for it by "
-      "name; this instrument draws every frame the host hands it")
+check("PASS-BOXFOLD the manifest leaves the drawing buffer unpreserved",
+      "gl: { preserveDrawingBuffer: false }" in REGION,
+      "§7 refuses a manifest that asks for the buffer to be preserved; this instrument draws every "
+      "frame the host hands it. The module holds its own canvas and asks for the flag by name, "
+      "which is the module's own question and not this one's")
 
 check("PASS-BOXFOLD the coverage is declared, and the frame it fills is the reason",
       "coverage: { writes: false" in REGION

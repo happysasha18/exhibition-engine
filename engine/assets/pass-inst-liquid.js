@@ -717,6 +717,12 @@
       // The departing work loosens onto the swell, the middle is water carrying two photographs at
       // once, and the arriving work settles flat.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 3,
+      // ~/tlvphotos). A single-work module: the lab source this file was carried from declares
+      // `needs: 1` and draws one work alone, so pass-composer.js may not cast it into an
+      // ordinary crossing voice — only where a future road seats two of these, one per work
+      // (criterion 8), does it stay castable.
+      catalogue: "single-work",
       // TEXTURE, AND THAT IS THE WHOLE OF IT. `lab/CROSSING-HISTORY.md`'s vocabulary table publishes
       // exactly this level for this module. The water bends the picture's own material and splits
       // its colour at the bend; nothing here cuts the frame into parts. WORLD is not claimed either:

@@ -589,6 +589,11 @@
       // The frame comes apart from its own flatness, the middle is a plane going away into depth with
       // a front riding forward over it, and the arriving work stands upright and whole.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 4,
+      // ~/tlvphotos). A carrier: its own registration calls it "a carrier over anything else",
+      // and one of its faces may hold a live canvas of another module rather than joining two
+      // works of its own, so pass-composer.js may not cast it into a crossing voice.
+      catalogue: "carrier",
       // THE LEVEL IS CARRIED, NOT DERIVED. lab/data/module-contract-new.json's own `tilt` row reads
       // «level: WORLD», and its `family` says why: the frame is one projective plane and the boundary
       // is a row of that plane travelling toward the eye — a geometry rather than a field.
@@ -703,11 +708,11 @@
         // columns' own moments over four fifths of the plane.
         lead: { min: 0, max: 1, def: 0.4,
                 unit: "how far apart the columns' own moments stand, in the plane's own rows",
-                // NO MEASUREMENT NAMES THIS ONE, and it is said rather than filled with the nearest
-                // number to hand. How ragged a handover should read is a matter of the crossing's own
-                // taste; nothing in a work record measures it, and inventing a reading for it would
-                // be a number nobody measured.
-                reads: null,
+                // CHARTER SHELF 13'S GOLDEN-ANGLE STAGGER (plan row S-117, 2026-09-08), taken on
+                // the same band count `columns` below already reads, so a front cut into many
+                // columns falls out of step more than one cut into few.
+                reads: "the strip element sets' own count, golden-angle staggered — the same "
+                     + "count `columns` reads",
                 // held at WORLD under the HARD CONSTRAINT above: honestly a per-column stagger reads
                 // as CELL, and this instrument declares WORLD alone
                 level: "WORLD" },

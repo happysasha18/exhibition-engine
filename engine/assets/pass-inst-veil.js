@@ -506,6 +506,14 @@
       // is a frame where neither work is wholly legible, and the arriving work gathers as it comes
       // forward.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO, READ OFF THIS INSTRUMENT'S OWN
+      // CONSTRUCTION rather than off SPEC.md Requirement 123, which names no catalogue for it:
+      // `lab/effects/` holds no veil module (criterion 9), so no lab source stands to carry a
+      // `needs:` count or a criterion-2 listing. What decides it is this file's own header at
+      // :40-42 above: the two works TRADE DEPTHS, the departing one receding and the arriving
+      // one coming forward until it stands sharp — a morph between two works, which is a
+      // crossing.
+      catalogue: "crossing",
       // READ OFF THIS INSTRUMENT'S OWN CONSTRUCTION, and said to be read rather than published:
       // there is no lab module for a veil, so no vocabulary table carries a row for it.
       //   · SURFACE — one field runs over the whole frame, the difference between the two works'

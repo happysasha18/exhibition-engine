@@ -306,15 +306,14 @@ check("PASS-KAL the vista preset his taste approved is what the three parameters
       "«kaleidoscope 8/.55/repeats 1» — the vista preset the charter records against his word of "
       "2026-08-08 11:39, and the module's own declared defaults besides")
 
-# THE CEILING, READ AS ARITHMETIC RATHER THAN AS A COMMENT NAMING IT. Both ceilings below are
-# extracted from the two files' own text — never hand-copied — and then actually clamped against, so
-# the row proves what a request of 5 becomes through each file's own number rather than trusting a
-# prose citation of his verdict.
+# THE CEILING, READ AS ARITHMETIC RATHER THAN AS A COMMENT NAMING IT. Extracted from the engine's
+# own built file — never hand-copied — and then actually clamped against, so the row proves what a
+# request of 5 becomes through the engine's own number rather than trusting a prose citation of his
+# verdict. The module's own span is a separate fact about the module, not a premise this row needs:
+# whatever the module allows, this instrument's own ceiling is what a score is actually held to.
 _RINGS_M = re.search(r"var RINGS_MIN = (\d+), RINGS_MAX = (\d+), RINGS_DEF = (\d+);", REGION)
-_MODULE_RINGS_MAX_M = re.search(r"max: (\d+(?:\.\d+)?), step: 0\.05", LABTXT)
 _rings_min = int(_RINGS_M.group(1)) if _RINGS_M else None
 _rings_max = int(_RINGS_M.group(2)) if _RINGS_M else None
-_module_rings_max = float(_MODULE_RINGS_MAX_M.group(1)) if _MODULE_RINGS_MAX_M else None
 
 
 def _clamp_num(v, a, b):
@@ -322,17 +321,15 @@ def _clamp_num(v, a, b):
 
 
 check("PASS-KAL his ceiling on the radial repeat is applied, and it is named as his",
-      _rings_max == 2 and _module_rings_max == 5
+      _rings_max == 2
       and "ceiling: RINGS_MAX" in REGION
-      and _clamp_num(5, _rings_min, _rings_max) == 2
-      and _clamp_num(5, _rings_min, _module_rings_max) == 5,
-      f"the module's own declared span — read off its own file, not quoted — runs to "
-      f"{_module_rings_max:g}, and clamping a request of 5 against it leaves 5 untouched. This "
-      f"instrument's own extracted ceiling is {_rings_max}, and the same clamp on the same request "
-      f"of 5 leaves {_clamp_num(5, _rings_min, _rings_max)}: his standing verdict «rings>2 washes to "
-      f"milk» read as the arithmetic it actually is, on both files' own numbers, rather than as a "
-      f"comment naming it. RED-ON-BUG (`his ceiling on the repeats removed`, below) shows what a "
-      f"score reaching past this ceiling looks like on the rendered frame")
+      and _clamp_num(5, _rings_min, _rings_max) == 2,
+      f"this instrument's own extracted ceiling is {_rings_max}, named as his in its own text "
+      f"(`ceiling: RINGS_MAX`), and the same clamp on a request of 5 leaves "
+      f"{_clamp_num(5, _rings_min, _rings_max)}: his standing verdict «rings>2 washes to milk» read "
+      f"as the arithmetic it actually is, on the engine's own number, rather than as a comment "
+      f"naming it. RED-ON-BUG (`his ceiling on the repeats removed`, below) shows what a score "
+      f"reaching past this ceiling looks like on the rendered frame")
 
 # `softAbs`'s OWN FORMULA, RUN FOR REAL. The exact expression checked below (never hand-copied) is
 # executed at the fold's own edge and at the far edge of the retouched band, so the row proves the

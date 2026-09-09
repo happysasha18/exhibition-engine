@@ -634,6 +634,11 @@
       // them is the mystery; the arriving work stands behind it from the first crack and opens out to
       // its own frame as they leave.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       // READ OFF THE MODULE'S OWN HEADER AND SAID TO BE DERIVED — the two levels, with the lines they
       // were read from, stand in this file's opening comment. Neither module-contract file carries a
       // `gates` row, so no level is published for it anywhere else.

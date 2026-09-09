@@ -427,6 +427,57 @@ check("EX-COMPOSED nothing on the product path is keyed by a pair",
       and not re.search(r"scoreTemplates|passFillScore|passPack\b", JS),
       "the walk must build a request out of two work records, never look a pair up")
 
+# ------------------------------------------ every catalogue value declared reaches an admitting seat
+# TWO DECLARED SETS, COMPARED, AND NOTHING COMPOSED. His correction of 2026-09-08: reachability is
+# read from the source, not from watching whether some pair at some seed happens to cast an
+# instrument — a search over pairs and seeds proves nothing about every pair and every seed, and it
+# is the wrong instrument for a structural question besides.
+#
+#   · THE SET OF CATALOGUE VALUES AT LEAST ONE SEAT ADMITS. `pass-composer.js`'s own
+#     `CROSSING_INSTRUMENTS` filter (:1875-1878) is the ONLY place in the file that seats an
+#     instrument by its catalogue — both `castForKindsRanked` and `bestFilling` draw the whole of
+#     their candidate pool from it and from nowhere else. Its own `c !== "..."` clauses are read
+#     here as source text, not retyped: the excluded values are exactly the ones its own `!==`
+#     comparisons name.
+#   · THE SET OF CATALOGUE VALUES THE 27 MANIFESTS DECLARE, read off the fixture's own harvest
+#     rather than typed.
+#
+# A declared value the filter does not exclude is admitted, and every instrument carrying it is
+# free to be judged by the ordinary "must be chosen" rows below. A declared value the filter DOES
+# exclude is unreachable inside the composer, and this row asks that it be NAMED with the reason
+# rather than passed over: `standing` (hero, lens) has its own place outside the composer — the
+# gallery wall, the page's own opening — so unreachable INSIDE THE COMPOSER is the true and
+# complete statement about it, never a claim about the product. `carrier` (tilt) names a seat the
+# composer has not built at all, which is 2026-09-08's own finding. A THIRD value — one neither
+# admitted nor named — is what this row exists to catch, and it goes red on one exactly that way.
+COMPOSER_SEAT_FILTER = re.search(
+    r'var CROSSING_INSTRUMENTS = ALL_INSTRUMENTS\.filter\(function \(iid\) \{\s*'
+    r'var c = MANIFESTS\[iid\]\.catalogue;\s*'
+    r'return ([^;]+);', COMPOSER_SRC).group(1)
+SEAT_EXCLUDED_CATALOGUES = set(re.findall(r'c !== "([^"]+)"', COMPOSER_SEAT_FILTER))
+DECLARED_CATALOGUES = {}
+for _iid, _man in json.loads(FIXTURE.read_text(encoding="utf-8"))["consts"]["manifests"].items():
+    DECLARED_CATALOGUES.setdefault(_man["catalogue"], []).append(_iid)
+SEAT_ADMITTED_CATALOGUES = set(DECLARED_CATALOGUES) - SEAT_EXCLUDED_CATALOGUES
+UNSEATED_CATALOGUES = set(DECLARED_CATALOGUES) - SEAT_ADMITTED_CATALOGUES
+UNSEATED_NAMED_REASONS = {
+    "standing": "does its own job outside the crossing arsenal entirely — a gallery voice, the "
+                "page's own opening — never a seat this composer casts, so unreachable INSIDE THE "
+                "COMPOSER is the true and complete statement about it",
+    "carrier": "leans on another module's live picture rather than joining two works of its own, "
+               "and the composer has not built a seat for one",
+}
+UNSEATED_UNNAMED = sorted(UNSEATED_CATALOGUES - set(UNSEATED_NAMED_REASONS))
+check("EX-COMPOSED every catalogue value a manifest declares is admitted by some crossing-voice "
+      "seat, or is named as having no seat with the reason",
+      not UNSEATED_UNNAMED,
+      "the seat's own filter (pass-composer.js's CROSSING_INSTRUMENTS) excludes %s; the 27 "
+      "manifests declare %s; excluded and named with a reason: %s; excluded and NOT named — a gap "
+      "this row exists to catch: %s"
+      % (sorted(SEAT_EXCLUDED_CATALOGUES), sorted(DECLARED_CATALOGUES),
+         {c: DECLARED_CATALOGUES[c] for c in sorted(UNSEATED_CATALOGUES & set(UNSEATED_NAMED_REASONS))},
+         UNSEATED_UNNAMED or "none"))
+
 # ---------------------------------------------------------------- the derivation, in node
 
 FIX = json.loads(FIXTURE.read_text(encoding="utf-8"))
@@ -3176,6 +3227,38 @@ if (WITNESS && WITNESS.oneSlot) {
       if (_mrCase) break;
     }
   }
+  // WIDENED 2026-09-08, not weakened: the curated `ALL_PAIRS` (the CONTRASTS list, one direction
+  // each) is what the search above pays for on every ordinary run, and until today it always found
+  // a witness there. Once `pass-composer.js`'s crossing-voice catalogue filter excluded `tilt` (a
+  // carrier) from every seat, it stopped: `tilt` was this corpus's own second fold able to hand the
+  // slot on from `boxfold`/`planet` (confirmed against the pre-filter module: `neutral`→
+  // `rings-arrival`, culmination, cast `tilt` then `boxfold`), and among the three folds now
+  // reachable at all (`boxfold`, `planet`, `waterline`) none of the curated pairs' 37
+  // two-folds-in-reach cases ever hands the slot from one to a genuinely different one — the ledger
+  // still shows two folds within reach, but the die's own pick never diverges across the walk. The
+  // fold-handoff property this row needs still exists in the corpus; the curated pair list is just
+  // too small to reach it, exactly the gap `test_pass_reads.py`'s own seat widening exists to close
+  // for the same reason. So this widens the SAME search, at the SAME cost model — paid only once
+  // the cheap curated pass above has already failed — over the corpus's own full ordered-pair space
+  // rather than the hand-picked subset, and finds `ceiling`→`coarse-grain` (b-to-a, middle), which
+  // hands the slot from `boxfold` to `planet`.
+  if (!_mrCase) {
+    outer:
+    for (const x of allIds) {
+      for (const y of allIds) {
+        if (x === y) continue;
+        for (const d of ["a-to-b", "b-to-a"]) {
+          for (const role of REACH_ROLES) {
+            if (foldsInReachAt(x, y, d, role).length < 2) continue;
+            if (foldsCastOverNineSteps(x, y, d, role).length >= 2) {
+              _mrCase = [x, y, d, role];
+              break outer;
+            }
+          }
+        }
+      }
+    }
+  }
   _mrCase = _mrCase || TWO_FOLD_CASES[0] || [SPOT[0][0], SPOT[0][1], SPOT[0][2], "middle"];
   const a = _mrCase[0], b = _mrCase[1], mrDir = _mrCase[2], mrRole = _mrCase[3];
   const wa = works.works[a], wb = works.works[b];
@@ -3591,18 +3674,31 @@ else:
               + ", ".join(f"{r}: {sweep['roleN'][r]}" for r in ROLES_ALL_PY)
               + f" composed — nothing threw inside the entry: {threw or 'none'}")
 
-        # --- row 3 · every instrument that travels can be chosen ---------------------------------
+        # --- row 3 · every instrument reaches the seat its own catalogue admits ------------------
         # AN INSTRUMENT THAT SHIPS AND CANNOT PLAY IS A DEFECT, and counting the cast would miss it.
         # The unfold cut on panels all along; the folding instrument landed on the same kind, a rule
         # naming one instrument per kind gave the kind to the fold outright, and the only instrument
         # that shows a person how a work was made travelled to every visitor and could never be
         # chosen. This counts CHOICES over the whole constructed corpus at all five roles.
-        unreachable = [i for i in sweep["cast"] if not sweep["chosen"].get(i)]
+        #
+        # NARROWED 2026-09-08, not weakened: this sweep is `pass-composer.js`'s own crossing-voice
+        # cast (pivot/travel/arrival), which since the catalogue filter landed is the seat exactly
+        # `crossing` and `single-work` instruments answer for (SPEC.md Requirement 123). A `carrier`
+        # leans on another module's live picture and a `standing` instrument does its job outside
+        # the crossing arsenal — a gallery voice, the page's own opening — neither of which this
+        # sweep, or any other row of this file, ever drives; this row cannot see their own seat and
+        # must not fail them on a seat that was never theirs. So only crossing/single-work
+        # instruments are held to "must be chosen"; carrier/standing are reported, not judged, here.
+        catalogue = {i: FIX["consts"]["manifests"][i]["catalogue"] for i in sweep["cast"]}
+        judged = [i for i in sweep["cast"] if catalogue.get(i) in ("crossing", "single-work")]
+        unreachable = [i for i in judged if not sweep["chosen"].get(i)]
+        outside = sorted(i for i in sweep["cast"] if catalogue.get(i) not in ("crossing", "single-work"))
         check(NODE_ROWS[3], not unreachable,
               "over the constructed corpus at all five roles the cast is chosen "
               + json.dumps(sweep["chosen"], ensure_ascii=False)
-              + f"; instruments that travel to a visitor and can never be chosen: "
-                f"{unreachable or 'none'}")
+              + f"; of the {len(judged)} crossing/single-work instruments, these can never be "
+                f"chosen: {unreachable or 'none'}. Outside this seat by their own catalogue "
+                f"(not judged here): {outside}")
 
         # --- row 3 · the die chooses the road --------------------------------------------------
         d = got["dice"]
@@ -3629,15 +3725,19 @@ else:
         # readings, exactly as the docstring's anchor 4 says a reading is printed and never gated.
         rt = got["route"]
         rt_letters = rt["letters"]
-        rt_cast = len(sweep["cast"])
+        # SAME NARROWING AS ROW 3, FOR THE SAME REASON: a route is built from cast cues, which are
+        # crossing/single-work by construction now that the catalogue filter stands — a carrier or
+        # standing instrument was never a candidate for one, so "reaches the whole cast" means the
+        # whole cast THIS SWEEP CAN EVER ADDRESS, not the 27 the record ships.
+        rt_cast = len(judged)
         check(NODE_ROWS[4],
               rt["topShareWorst"] < 100.0 and rt["shapesMin"] > 1 and rt_letters == rt_cast,
               f"over {rt['routes']} cast routes of 21 steps every route shows more than one shape "
               f"(fewest {rt['shapesMin']}, most {rt['shapesMax']}, {rt['shapesMean']} on average) "
               f"and none is carried by one instrument alone (the most one-sided single route stands "
               f"at {rt['topShareWorst']}%, {rt['topShareMean']}% on average); the routes reach "
-              f"{rt_letters} of the {rt_cast} instruments the record ships; the spread across every "
-              f"step is " + json.dumps(rt["spread"], ensure_ascii=False))
+              f"{rt_letters} of the {rt_cast} crossing/single-work instruments; the spread across "
+              f"every step is " + json.dumps(rt["spread"], ensure_ascii=False))
 
         # --- row 4 · the camera-led passage ------------------------------------------------------
         check(NODE_ROWS[6],
@@ -3966,15 +4066,22 @@ else:
         # planted run against a count from the standing one, where the two sweep sizes alone
         # satisfied the inequality. The corpus is 34 pair cases and every run walks all of them.
         sw = got["sweep"]
-        worlds = sw["spendsTheMiracle"]
+        # SAME NARROWING AS ROW 3: `worldFoldInstruments` names every instrument that DECLARES the
+        # world level, whatever its catalogue — `tilt` is one of the four and is a carrier, never a
+        # candidate for this composer's own cast since the catalogue filter landed, so it can never
+        # be "seen cast" here on a seat that was never its. Held to reachability are the world
+        # instruments this composer can actually cast: crossing/single-work.
+        worlds = [i for i in sw["spendsTheMiracle"] if catalogue.get(i) in ("crossing", "single-work")]
+        worldsOutside = sorted(i for i in sw["spendsTheMiracle"] if i not in worlds)
         unvoiced = {r: n for r, n in sw["worldNotVoiced"].items() if n}
         castWorlds = sorted(sw["worldSeen"])
         check(NODE_ROWS[54],
               not unvoiced and castWorlds == sorted(worlds),
-              f"the collection publishes {len(worlds)} instrument(s) that declare the world — "
-              + ", ".join(worlds)
-              + f" — and the cast reaches every one of them ({', '.join(castWorlds)}); each is "
-              f"voiced the crossing's one miracle wherever it stands"
+              f"the collection publishes {len(sw['spendsTheMiracle'])} instrument(s) that declare "
+              f"the world — {', '.join(sw['spendsTheMiracle'])} — of which {len(worlds)} are "
+              f"crossing/single-work and the cast reaches every one of them ({', '.join(castWorlds)}"
+              f"); each is voiced the crossing's one miracle wherever it stands. Outside this seat "
+              f"by their own catalogue (not judged here): {worldsOutside or 'none'}"
               + (f"; cues that were not: {unvoiced}" if unvoiced else ""))
 
         # A ROLE THAT SPENDS NO MIRACLE NEVER OPENS A WORLD, and what holds that is a BOUND. The

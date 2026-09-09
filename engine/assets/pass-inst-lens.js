@@ -653,6 +653,11 @@
       // The glass opens over the departing work and folds it, the fold is the whole frame while the
       // two works change hands under it, and the arriving work is left standing whole.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 5,
+      // ~/tlvphotos). A standing instrument, outside the crossing arsenal by the project's own
+      // record (`outsideTheCrossingArsenal`, lab/data/module-contract-additions.json), so
+      // pass-composer.js may not cast it into a crossing voice.
+      catalogue: "standing",
       // WHERE THIS STANDS ON THE CHARTER'S SHELF. lab/CROSSING-HISTORY.md's vocabulary table records
       // this module at CELL and this port keeps that reading rather than growing it:
       //   · SURFACE — the fold is one map over one surface, and the plane it reads is the work
@@ -838,7 +843,7 @@
       capabilities: ["webgl2"],
       decline: ["one work only", "a source that never decoded"],
       provenance: { labPath: "lab/effects/lens.js", commit: "2afa485",
-                    sha256: "f52846e21115b8e43d2462eaa64fe8916e5eeea70ffe7ecda10dfe92c307774f" },
+                    sha256: "2abb6b89f709f715ddfa423dd949f458dfba36b65b46f592ff646cbd9723d49f" },
       readiness: "production-ready",
     };
 

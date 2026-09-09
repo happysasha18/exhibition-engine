@@ -341,13 +341,23 @@ else:
                 for r in BROWSER_ROWS:
                     skip(r, f"the walk hung fewer than four works: {allworks[:5]}")
             else:
-                enter(br, base, SEED)
-                wait_ready(br)
-                triple = js(br, TRIPLE % json.dumps(recorded))
-                if len(triple) < 3:
-                    for r in BROWSER_ROWS:
-                        skip(r, "no ordered triple of this hang composes both of its crossings")
-                else:
+                # A ROUND IS: find a triple this hang offers, then drive BOTH visits over it. The
+                # door deals again on every open (his word of 2026-07-12, read again above
+                # `enter_until`), so a triple built from `recorded` — itself read off ONE earlier
+                # open — is not guaranteed to still be the open any later navigate deals, whether
+                # that navigate is this round's own triple search or one of `play`'s two visits
+                # (each opens the door again through `enter_until`). A round that comes up short on
+                # EITHER half is a fact about that round's own deals, not about whether a triple
+                # exists on this hang at all, so the whole round is asked again — the identical
+                # retry `enter_until` already trusts for the identical reason, on the identical
+                # door, widened here to cover the round it stands inside rather than one open of it.
+                triple, stayed, left = [], {}, {}
+                for _ in range(8):
+                    enter(br, base, SEED)
+                    wait_ready(br)
+                    triple = js(br, TRIPLE % json.dumps(recorded))
+                    if len(triple) < 3:
+                        continue
                     A, B, C = triple[0], triple[1], triple[2]
 
                     # THE TWO VISITS. Alike in every single thing the composer reads — the same
@@ -356,100 +366,104 @@ else:
                     # exactly one: how long the person stayed with B.
                     stayed = play(br, base, A, B, C, linger=True)
                     left = play(br, base, A, B, C, linger=False)
+                    if not (stayed.get("no") or left.get("no")):
+                        break
+                if len(triple) < 3:
+                    for r in BROWSER_ROWS:
+                        skip(r, "no ordered triple of this hang composes both of its crossings")
+                elif stayed.get("no") or left.get("no"):
+                    why = stayed.get("no") or left.get("no")
+                    for r in BROWSER_ROWS:
+                        skip(r, "a visit could not be driven end to end on this hang: " + why)
+                else:
+                    sv = stayed["visit"] or {}
+                    lv = left["visit"] or {}
+                    letters = (stayed["standing"] or {}).get("letters") or []
+                    check(BROWSER_ROWS[0],
+                          bool(letters)
+                          and sv.get("lingered") == letters and sv.get("skipped") == []
+                          and lv.get("skipped") == letters and lv.get("lingered") == []
+                          and sv.get("seenWorks") == lv.get("seenWorks")
+                          and B in (sv.get("seenWorks") or [])
+                          and (stayed["request"] or {}).get("viewerMemory") is not None
+                          and (left["request"] or {}).get("viewerMemory") is not None,
+                          f"the crossing that landed carried the letters {letters}; the visit "
+                          f"that stayed remembers lingered={sv.get('lingered')} "
+                          f"skipped={sv.get('skipped')}, the visit that left remembers "
+                          f"lingered={lv.get('lingered')} skipped={lv.get('skipped')}, and both "
+                          f"were shown {sv.get('seenWorks')}")
 
-                    if stayed.get("no") or left.get("no"):
-                        why = stayed.get("no") or left.get("no")
-                        for r in BROWSER_ROWS:
-                            skip(r, "a visit could not be driven end to end on this hang: " + why)
-                    else:
-                        sv = stayed["visit"] or {}
-                        lv = left["visit"] or {}
-                        letters = (stayed["standing"] or {}).get("letters") or []
-                        check(BROWSER_ROWS[0],
-                              bool(letters)
-                              and sv.get("lingered") == letters and sv.get("skipped") == []
-                              and lv.get("skipped") == letters and lv.get("lingered") == []
-                              and sv.get("seenWorks") == lv.get("seenWorks")
-                              and B in (sv.get("seenWorks") or [])
-                              and (stayed["request"] or {}).get("viewerMemory") is not None
-                              and (left["request"] or {}).get("viewerMemory") is not None,
-                              f"the crossing that landed carried the letters {letters}; the visit "
-                              f"that stayed remembers lingered={sv.get('lingered')} "
-                              f"skipped={sv.get('skipped')}, the visit that left remembers "
-                              f"lingered={lv.get('lingered')} skipped={lv.get('skipped')}, and both "
-                              f"were shown {sv.get('seenWorks')}")
+                    # DOES THE MEMORY REACH THE DIE, AND MOVE IT? The two memories are in hand
+                    # and the row above has already shown they are opposites. What is asked here
+                    # is whether handing one or the other to the composer changes what it
+                    # composes — put to the composer's own entry, on the very requests the walk
+                    # builds, with nothing in between.
+                    #
+                    # IT IS ASKED OF THE WHOLE HANG AND NOT OF ONE EDGE, and that is the repair
+                    # this row needed. It used to drive two visits over a single edge and compare
+                    # the score bytes, and whether a bounded bias flips a cast depends on what
+                    # else stands in that edge's own pool: the same row passed on the pair
+                    # synth-21 to synth-14 and failed on synth-16 to synth-05 in two runs of an
+                    # identical engine an hour apart, because the door deals a fresh spread on
+                    # every open. A row whose answer is decided by which pair was dealt proves
+                    # nothing either way. So the question is put to every edge this hang offers
+                    # and what it asserts is that the memory moves at least one of them — an
+                    # existence, which is what "the die is moved" means and which no deal can
+                    # turn into an accident. The edge that moved is named.
+                    moved = js(br, EDGES_JS % (json.dumps(recorded), json.dumps(sv),
+                                               json.dumps(lv)))
+                    check(BROWSER_ROWS[1],
+                          bool(moved["edge"]),
+                          f"the two memories put to the composer's own entry over the edges this "
+                          f"hang offers: the visit that stayed and the visit that left compose "
+                          f"different crossings on {moved['edge']}. Everything but the memory is "
+                          f"held identical — the same request the walk builds, the same records, "
+                          f"the same pinned visit seed"
+                          if moved["edge"] else
+                          f"the two memories were put to the composer's own entry over every "
+                          f"edge this hang offers and not one composed differently. The memories "
+                          f"themselves are opposite (the row above holds that), so either the "
+                          f"bias never reaches the die or nothing in any of these pools stands "
+                          f"close enough for it to move")
 
-                        # DOES THE MEMORY REACH THE DIE, AND MOVE IT? The two memories are in hand
-                        # and the row above has already shown they are opposites. What is asked here
-                        # is whether handing one or the other to the composer changes what it
-                        # composes — put to the composer's own entry, on the very requests the walk
-                        # builds, with nothing in between.
-                        #
-                        # IT IS ASKED OF THE WHOLE HANG AND NOT OF ONE EDGE, and that is the repair
-                        # this row needed. It used to drive two visits over a single edge and compare
-                        # the score bytes, and whether a bounded bias flips a cast depends on what
-                        # else stands in that edge's own pool: the same row passed on the pair
-                        # synth-21 to synth-14 and failed on synth-16 to synth-05 in two runs of an
-                        # identical engine an hour apart, because the door deals a fresh spread on
-                        # every open. A row whose answer is decided by which pair was dealt proves
-                        # nothing either way. So the question is put to every edge this hang offers
-                        # and what it asserts is that the memory moves at least one of them — an
-                        # existence, which is what "the die is moved" means and which no deal can
-                        # turn into an accident. The edge that moved is named.
-                        moved = js(br, EDGES_JS % (json.dumps(recorded), json.dumps(sv),
-                                                   json.dumps(lv)))
-                        check(BROWSER_ROWS[1],
-                              bool(moved["edge"]),
-                              f"the two memories put to the composer's own entry over the edges this "
-                              f"hang offers: the visit that stayed and the visit that left compose "
-                              f"different crossings on {moved['edge']}. Everything but the memory is "
-                              f"held identical — the same request the walk builds, the same records, "
-                              f"the same pinned visit seed"
-                              if moved["edge"] else
-                              f"the two memories were put to the composer's own entry over every "
-                              f"edge this hang offers and not one composed differently. The memories "
-                              f"themselves are opposite (the row above holds that), so either the "
-                              f"bias never reaches the die or nothing in any of these pools stands "
-                              f"close enough for it to move")
-
-                        # THE EPHEMERALITY, read as the difference between two memories standing
-                        # side by side. The edge record IS stored — §4.8's own law — and survives a
-                        # reload inside the visit window; the visit's memory of itself is this
-                        # page's alone and starts over with it. One reload separates them.
-                        before = js(br, "var r = window.__exPass.report();"
-                                        "return {visit: r.memory.visit,"
-                                        " edges: (r.memory.edges || []).map(function (e) {"
-                                        "   return e.edgeKey; })};")
-                        br.reload()
-                        for _ in range(30):
-                            if br.evaluate("String(!!window.__exPass)") == "true":
-                                break
-                            br.sleep(0.2)
-                        br.sleep(0.6)
-                        # The edge store is read from the browser on demand, so it is ASKED for
-                        # before the surface is read — otherwise the row would be reading a page
-                        # that has not yet opened the store rather than a store that lost its rows.
-                        after = js(br, "window.__exPass.memory.all();"
-                                       "var r = window.__exPass.report();"
-                                       "var keys = [];"
-                                       "try { keys = Object.keys(window.sessionStorage)"
-                                       "  .concat(Object.keys(window.localStorage)); } catch (e) {}"
-                                       "return {visit: r.memory.visit,"
-                                       " edges: (r.memory.edges || []).map(function (e) {"
-                                       "   return e.edgeKey; }),"
-                                       " stores: keys};")
-                        kept = [k for k in before["edges"] if k in after["edges"]]
-                        check(BROWSER_ROWS[2],
-                              bool(before["visit"]["seenWorks"])
-                              and after["visit"]["seenWorks"] == []
-                              and after["visit"]["lingered"] == []
-                              and after["visit"]["skipped"] == []
-                              and after["visit"]["standing"] is None
-                              and bool(kept),
-                              f"before the reload the visit remembered {before['visit']} and the "
-                              f"browser held the edge(s) {before['edges']}; after it the visit "
-                              f"remembers {after['visit']} and the browser still holds {kept}. The "
-                              f"stores this page opened are {after['stores']}")
+                    # THE EPHEMERALITY, read as the difference between two memories standing
+                    # side by side. The edge record IS stored — §4.8's own law — and survives a
+                    # reload inside the visit window; the visit's memory of itself is this
+                    # page's alone and starts over with it. One reload separates them.
+                    before = js(br, "var r = window.__exPass.report();"
+                                    "return {visit: r.memory.visit,"
+                                    " edges: (r.memory.edges || []).map(function (e) {"
+                                    "   return e.edgeKey; })};")
+                    br.reload()
+                    for _ in range(30):
+                        if br.evaluate("String(!!window.__exPass)") == "true":
+                            break
+                        br.sleep(0.2)
+                    br.sleep(0.6)
+                    # The edge store is read from the browser on demand, so it is ASKED for
+                    # before the surface is read — otherwise the row would be reading a page
+                    # that has not yet opened the store rather than a store that lost its rows.
+                    after = js(br, "window.__exPass.memory.all();"
+                                   "var r = window.__exPass.report();"
+                                   "var keys = [];"
+                                   "try { keys = Object.keys(window.sessionStorage)"
+                                   "  .concat(Object.keys(window.localStorage)); } catch (e) {}"
+                                   "return {visit: r.memory.visit,"
+                                   " edges: (r.memory.edges || []).map(function (e) {"
+                                   "   return e.edgeKey; }),"
+                                   " stores: keys};")
+                    kept = [k for k in before["edges"] if k in after["edges"]]
+                    check(BROWSER_ROWS[2],
+                          bool(before["visit"]["seenWorks"])
+                          and after["visit"]["seenWorks"] == []
+                          and after["visit"]["lingered"] == []
+                          and after["visit"]["skipped"] == []
+                          and after["visit"]["standing"] is None
+                          and bool(kept),
+                          f"before the reload the visit remembered {before['visit']} and the "
+                          f"browser held the edge(s) {before['edges']}; after it the visit "
+                          f"remembers {after['visit']} and the browser still holds {kept}. The "
+                          f"stores this page opened are {after['stores']}")
 
 # ---------------------------------------------------------------- report
 import shutil  # noqa: E402

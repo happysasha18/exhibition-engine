@@ -617,6 +617,12 @@
       // The work folds onto its own mirror, the two works exchange while the frame is wholly
       // mirrored and neither is legible as itself, and the second opens back out of the mirror.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 3,
+      // ~/tlvphotos). A single-work module: the lab source this file was carried from declares
+      // `needs: 1` and draws one work alone, so pass-composer.js may not cast it into an
+      // ordinary crossing voice — only where a future road seats two of these, one per work
+      // (criterion 8), does it stay castable.
+      catalogue: "single-work",
       // WHICH ARRIVAL MODE WANTS THIS INSTRUMENT (plan row S-83, 2026-09-03). PROPAGATED names a
       // copy propagating, which is what this instrument's own `propagate` handle plays — the
       // composer used to carry this as one entry of a table it kept about two instruments by name

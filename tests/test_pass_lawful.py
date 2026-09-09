@@ -608,10 +608,20 @@ TALLY = [
      "a share of the collection said in words"),
 ]
 # What reads like a tally and is not one: a file path with a line citation, a date, a span written
-# low-to-high, a threshold in the unit the eye reads, and a schema, api, row or section number.
+# low-to-high, a threshold in the unit the eye reads, and a schema, api, row, section, SPEC.md
+# requirement or criterion number. `Requirement`/`criterion` joined this list 2026-09-08: SPEC.md's
+# own citation shape (~/tlvphotos/SPEC.md) reached this file's comments the same day the catalogue
+# field did — "Requirement 123 criterion 8 records that..." — and blanking `criterion 8` ALONE still
+# reddened the row, because NUM's own char class (`[0-9   ,.]*`, built to read a number written with
+# internal spaces or commas) bridges straight across a run of blanked spaces: `Requirement 123` plus
+# the now-blank stretch where `criterion 8` stood reads as one long digit-and-space run, ending on
+# the word `records` that followed. So `Requirement [0-9]+` is blanked too, the same citation class
+# `schema [0-9]` and `api [0-9]` already stand beside it to name — no digit either citation carries
+# is ever a count over the photographs.
 INNOCENT = re.compile(r"[A-Za-z0-9_./-]+\.(py|js|md|json):[0-9-]+|[0-9]{4}-[0-9]{2}-[0-9]{2}|"
                       r"\b[0-9]+–[0-9]+\b|\b[0-9]+-[0-9]+\b|\bof 255\b|\bof [0-9]+ ms\b|"
-                      r"\bschema [0-9]|\bapi [0-9]|§[0-9.]+|\brows? [0-9]+\b")
+                      r"\bschema [0-9]|\bapi [0-9]|§[0-9.]+|\brows? [0-9]+\b|"
+                      r"\bRequirement [0-9]+\b|\bcriterion [0-9]+\b")
 
 
 def enclosing_rule(lines, at):

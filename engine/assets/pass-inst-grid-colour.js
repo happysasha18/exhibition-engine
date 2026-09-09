@@ -888,6 +888,12 @@
       // The first work comes apart along its own grid, the ground shows between the pieces while both
       // works are travelling, and the second work stands whole out of its own.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 3,
+      // ~/tlvphotos). A single-work module: the lab source this file was carried from declares
+      // `needs: 1` and draws one work alone, so pass-composer.js may not cast it into an
+      // ordinary crossing voice — only where a future road seats two of these, one per work
+      // (criterion 8), does it stay castable.
+      catalogue: "single-work",
       // WHERE THIS STANDS ON THE CHARTER'S SHELF. lab/data/module-contract.json carries this module's
       // level already read — CELL+LIGHT-COLOUR — and that row is carried here rather than re-decided:
       //   · CELL — the pieces. The frame is cut into cells that leave one at a time along their own

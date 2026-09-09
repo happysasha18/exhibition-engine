@@ -390,10 +390,10 @@ check("PASS-TUNNEL the shader carries no version header of its own",
       "header it needs")
 
 check("PASS-TUNNEL the manifest leaves the drawing buffer unpreserved",
-      "gl: { preserveDrawingBuffer: false }" in REGION
-      and "preserveDrawingBuffer: false" in LABTXT,
+      "gl: { preserveDrawingBuffer: false }" in REGION,
       "§7 refuses a manifest that asks for the buffer to be preserved; this instrument draws every "
-      "frame the host hands it, which is what the module does too")
+      "frame the host hands it. The module holds its own canvas and needs the flag true to keep a "
+      "held frame, which is the module's own question and not this one's")
 
 check("PASS-TUNNEL the coverage is declared, and the map it draws is the reason",
       "coverage: { writes: false" in REGION

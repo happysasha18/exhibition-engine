@@ -469,7 +469,17 @@
       var mA = departLin * departLin, mB = Math.pow(1 - arriveLin, 4);
       var thrA = st.thrA + (st.maxA - st.thrA) * Math.min(mA / SHUT, 1)
                + SHUT_PAST * smoothstep(SHUT - 0.02, 1, mA);
-      var thrB = st.thrB + (st.maxB - st.thrB) * Math.min(mB / SHUT, 1)
+      // THE FLOOR ITSELF ARRIVES, ON THE SAME FOURTH-POWER CURVE THE DISSOLVE ALREADY WALKS. st.thrB
+      // is solved for B's own silhouette share, but the hole this instrument's absence carries is
+      // wider than that silhouette (grown past it so a departed thing leaves no pale grid-ghost of
+      // itself), and that gap used to stand at every point of the arrival, not just at its start. mB
+      // is already the arrival's own curve, 1 before arriving begins and 0 only at the door; walking
+      // the floor DOWN FROM st.thrB by that same mB (not a new curve) means the true picture takes
+      // over the grown hole AS the object firms up, while the floor still lands on EXACTLY st.thrB
+      // at the door (mB = 0, the (1 - mB) factor is 1), which is what the coverage law's own door
+      // contract needs — the two readings the same expression at the same arguments, uThr == uThr0.
+      var floorB = st.thrB * (1 - mB);
+      var thrB = floorB + (st.maxB - floorB) * Math.min(mB / SHUT, 1)
                + SHUT_PAST * smoothstep(SHUT - 0.02, 1, mB);
       // THE GRAIN LADDER IS GEOMETRIC: a grain count is a scale, and what the eye reads is the size
       // of a cell. Stepped arithmetically the first tenth of the handle changes the cell size by a
@@ -697,6 +707,11 @@
       // The departing thing comes apart, the middle holds an emptiness belonging to neither work,
       // and the arriving thing gathers and settles.
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       // READ OFF THE MODULE'S OWN CONSTRUCTION, and said to be derived. The vocabulary table carries
       // no `adrift` row and `module-contract.json` no `adrift` entry, so no level is published for it
       // anywhere and these two are read here:
@@ -940,7 +955,7 @@
       // is no commit to name and none is invented. The digest of the file the port was read from
       // stands in its place, and a row re-weighs the file against it.
       provenance: { labPath: "lab/effects/adrift.js", commit: null,
-                    sha256: "3d72fbdfee393ccf20813c2655d8b14316c35bdb5bd3d20ee89da85aec35020e" },
+                    sha256: "9b6e106bf8fb8c93fdd009d6de35d292510152f884581428f95be44869d7b7c5" },
       // HOW WELL THIS INSTRUMENT SUITS A PAIR (2026-08-18, his word of 09:51 and its sharpening at
       // 09:53). An instrument no longer answers WHETHER it takes a pair — it answers how well it
       // suits one, so a poor fit is still playable and still explains itself. The arithmetic runs in

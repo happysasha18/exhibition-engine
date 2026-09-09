@@ -633,6 +633,11 @@
     var manifest = {
       id: "gears", api: 1, arity: 2,
       roles: ["disassembly", "mystery", "assembly"],
+      // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 2,
+      // ~/tlvphotos). A crossing: it joins two works rather than transforming one, so
+      // pass-composer.js may cast it into a crossing voice — the pivot, the travel or the
+      // arrival slot.
+      catalogue: "crossing",
       levels: ["SURFACE", "CELL"],
       // THE FRAME'S OWN PARTITION (§8's `seams` block, pass-layer.js). Each wheel is cut into teeth
       // by its own tooth count — a WEDGE of the wheel's own turn per tooth, the same primitive

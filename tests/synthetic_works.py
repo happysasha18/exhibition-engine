@@ -398,15 +398,18 @@ CLASSES = [
       "structure.ownDevice.kind": "rings"}),
 
     ("dark",
-     "the bottom of `luminance.level`, the tone half of `tonalSpectral` (pass-composer.js:3166)",
+     "the bottom of `luminance.level`, the tone half of `tonalSpectral` (pass-composer.js:3166), "
+     "and of `colour.contrast` beside it — the pair below claims «the whole span of strata-light's "
+     "own reading», which is `colour.sat` AND `colour.contrast` both (pass-composer.js:1096-1107),  "
+     "so both travel here rather than one",
      {"luminance.level": LOW, "colour.brightness": LOW, "palette.rung": "чёрно-белое",
-      "colour.sat": LOW, "palette.colourfulness": LOW, "palette.hues": []}),
+      "colour.sat": LOW, "colour.contrast": LOW, "palette.colourfulness": LOW, "palette.hues": []}),
 
     ("bright",
      "the top of the same reading, so a pair of dark against bright stands the whole span of the "
      "tonal bridge apart",
      {"luminance.level": HIGH, "colour.brightness": HIGH, "palette.rung": "полный цвет",
-      "colour.sat": HIGH, "palette.colourfulness": HIGH,
+      "colour.sat": HIGH, "colour.contrast": HIGH, "palette.colourfulness": HIGH,
       "palette.hues": ["red", "orange", "yellow"]}),
 
     ("fine-grain",
@@ -816,11 +819,14 @@ CONTRASTS = [
     ("bright", "fine-grain", "a-to-b",
      "the same two readings the other way about"),
 
-    ("bare-dark", "bare-bright", "a-to-b",
-     "the whole span of `luminance.level` on a pair where every rival on the band cut reads nothing, "
-     "so the crossing is `strata-light`'s own and its two level handles are driven at the two ends "
-     "of the reading they declare"),
-    ("bare-bright", "bare-dark", "a-to-b",
+    ("bare-dark", "ceiling", "a-to-b",
+     "the whole span of `luminance.level`, so `strata-light`'s own two level handles are driven at "
+     "the two ends of the reading they declare. REPOINTED 2026-09-08 off `bare-dark`/`bare-bright`: "
+     "that pair no longer casts a passage where `strata-light` owns CELL once "
+     "`pass-composer.js`'s crossing-voice catalogue filter dropped `carrier`/`standing` "
+     "candidates from the stack's own die — a fixed seed over a changed candidate pool is a "
+     "changed pick, not a changed law, and this pair casts the same seat the old one meant to"),
+    ("bare-bright", "dark", "a-to-b",
      "the same span the other way, so the handle that reads the departing work and its twin that "
      "reads the arriving one are told apart"),
     ("lattice-dim", "lattice-vivid", "a-to-b",
