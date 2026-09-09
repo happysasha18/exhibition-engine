@@ -589,6 +589,16 @@
       S.canvas.width = w; S.canvas.height = h;
       S.gl.viewport(0, 0, w, h);
     }
+    // The hand layer moves the real photograph a few pixels as it breathes and leans.  This canvas
+    // is an opaque rendering of that same photograph; if it stays still above the moving element,
+    // it makes the older response look as though it has stopped.  The overlay therefore carries the
+    // photograph's current pose too.  Read the computed matrix and origin instead of duplicating
+    // pass-hand's arithmetic: either layer can evolve without a second transform law drifting away.
+    try {
+      var pose = getComputedStyle(img);
+      cs.transform = pose.transform;
+      cs.transformOrigin = pose.transformOrigin;
+    } catch (e) {}
   }
 
   function upload(img) {
