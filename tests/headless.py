@@ -32,6 +32,7 @@ Usage (unchanged for every existing suite):
 """
 import contextlib
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -171,3 +172,91 @@ class Browser(_CoreBrowser):
 
     def clear_storage(self):
         self.evaluate("localStorage.clear()")
+
+
+# THE ONE SHARED BROWSER WAIT (row S-119, provoked 2026-09-09). Nine call sites across this tree
+# each kept their own copy of the same poll loop — eight named `wait_for`, one in test_lang.py named
+# `poll` — and every copy had the same defect. On the day four suites shared this one machine,
+# `pass_hand_profile`'s own local copy of this loop ran out of time before the browser had actually
+# reached the state it was polling for, so it read `None` and handed that `None` straight back to
+# its caller. The caller could not tell an empty read from a real one, wrote the empty read down as
+# a fact about the product, and printed two FAIL rows reading `idled=True cadence_seen=None`. That
+# same suite passed 6 of 6 a few minutes later, run on its own, once the host was not carrying three
+# other suites at the same time. The machine having been busy is a fact about the machine, never a
+# fact about the product, and a suite that can go red on that fact alone is a defect in the suite —
+# see `/Users/sashaabramovich/tlvphotos/CLAUDE.md` under "No clock on this machine, and no verdict
+# that reads its state."
+#
+# The repair lives here once, so it reaches every suite that imports it. A wait that finishes in
+# time returns exactly what the old per-suite copies returned — the first truthy read — so nothing
+# changes on the path where the browser actually got where it was going. A wait that runs OUT of
+# time does not return an empty value at all, because an empty value is exactly what let the old
+# copies masquerade as a verdict on the product. Instead it prints the expression it was waiting on
+# and how long it waited, says in plain words that nothing printed above that line is a verdict on
+# the product because the wait itself never finished, says the suite should be run on its own
+# machine for a real verdict, and ends the whole process with the same exit code
+# `tests/test_pass_reads.py` already uses for a run that did not reach a clean pass — 1, never a
+# silent return that a caller could go on to read as a fact.
+def wait_for(br, expr, timeout, step=0.05):
+    """Poll `expr` in `br` until it reads truthy, or end the run rather than hand back an empty
+    read. `timeout` carries no default on purpose: every suite in this tree measured its OWN budget
+    for its OWN kind of browser state — a modal opening is fast, a full crossing is slow — and
+    folding all of those different numbers into one shared default here would be exactly the
+    flattening this row was written to avoid. The caller states its own number; this function only
+    watches it honestly."""
+    end = time.time() + timeout
+    val = None
+    while time.time() < end:
+        val = br.evaluate(expr)
+        if val:
+            return val
+        br.sleep(step)
+    print(f"wait_for: timed out after {timeout}s waiting on: {expr}")
+    print("nothing printed above this line is a verdict on the product. the wait itself did not "
+          "finish, most likely because this machine was busy running other work at the same time "
+          "(row S-119, provoked 2026-09-09 by pass_hand_profile reading a starved wait as two FAIL "
+          "rows). run this suite on its own machine before reading anything above as a result.")
+    sys.exit(1)
+
+
+def _selftest_wait():
+    """No-browser check for `wait_for`'s timeout path: `python3 tests/headless.py --selftest-wait`.
+    A stub stands in for `Browser` — its `evaluate` always answers falsy, so the expression can
+    never turn true and the deadline is the only way out. This asserts the run ends by exiting with
+    code 1 rather than returning an empty value, and that the printed lines name the expression and
+    the timeout and say plainly that nothing above them is a verdict on the product."""
+    import io
+
+    class _NeverTrue:
+        def evaluate(self, expr):
+            return None
+
+        def sleep(self, seconds):
+            pass
+
+    captured = io.StringIO()
+    real_stdout = sys.stdout
+    caught = None
+    sys.stdout = captured
+    try:
+        wait_for(_NeverTrue(), "window.__neverArrives", timeout=0.2, step=0.02)
+    except SystemExit as e:
+        caught = e
+    finally:
+        sys.stdout = real_stdout
+
+    assert caught is not None, (
+        "wait_for must end the run on timeout, not return an empty value to the caller")
+    assert caught.code == 1, f"expected exit code 1 (test_pass_reads.py's own fail code), got {caught.code!r}"
+    printed = captured.getvalue()
+    assert "window.__neverArrives" in printed, "the timeout line must name the expression it waited on"
+    assert "0.2" in printed, "the timeout line must name how long it waited"
+    assert "not a verdict" in printed.lower() or "verdict on the product" in printed.lower(), (
+        "the timeout must say plainly that nothing above it is a verdict on the product")
+    print("selftest-wait: ok — timeout ends the run with exit code 1 and never returns an empty read")
+
+
+if __name__ == "__main__":
+    if "--selftest-wait" in sys.argv:
+        _selftest_wait()
+        sys.exit(0)

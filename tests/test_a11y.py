@@ -27,7 +27,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 import engine_build as build_site  # noqa: E402
-from headless import serve, Browser, chrome_available  # noqa: E402
+from headless import serve, Browser, chrome_available, wait_for  # noqa: E402
 
 SITE_URL = "https://synth.example.com"
 NS_UPPER = "EX"                       # the engine bake's global namespace (localStorage 'ex-tempo', window.EXQuiz)
@@ -42,17 +42,13 @@ def skip(name, detail):
     results.append((name, "SKIP", detail))
 
 
-def wait_for(br, expr, timeout=6.0, step=0.05):
-    """Poll a JS expression until it returns truthy (or the deadline) — no fixed-sleep races."""
-    import time
-    end = time.time() + timeout
-    val = None
-    while time.time() < end:
-        val = br.evaluate(expr)
-        if val:
-            return val
-        br.sleep(step)
-    return val
+# `wait_for` used to be a local copy of the same poll loop headless.py now carries once, shared
+# across every suite (row S-119, 2026-09-09 — see the long comment on the shared copy for the
+# incident). This suite's own measured budget was 6.0s and stays 6.0s here, bound once so every
+# bare call below keeps that number without retyping it, and any call that states its own timeout
+# keeps overriding it exactly as before.
+import functools
+wait_for = functools.partial(wait_for, timeout=6.0, step=0.05)
 
 
 def wait_settled(br, expr, start, timeout=6.0, step=0.05, stable=2):

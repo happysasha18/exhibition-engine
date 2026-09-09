@@ -41,7 +41,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 import engine_build as build_site  # noqa: E402
 import build as _engine  # noqa: E402 — engine/build.py, already on sys.path via engine_build
-from headless import serve, Browser, chrome_available  # noqa: E402
+from headless import serve, Browser, chrome_available, wait_for  # noqa: E402
 
 SITE_URL = "https://synth.example.com"
 results = []
@@ -55,17 +55,13 @@ def skip(name, detail):
     results.append((name, "SKIP", detail))
 
 
-def wait_for(br, expr, timeout=6.0, step=0.05):
-    """Poll a JS expression until it returns truthy (or the deadline) — no fixed-sleep races."""
-    import time
-    end = time.time() + timeout
-    val = None
-    while time.time() < end:
-        val = br.evaluate(expr)
-        if val:
-            return val
-        br.sleep(step)
-    return val
+# `wait_for` used to be a local copy of the same poll loop headless.py now carries once, shared
+# across every suite (row S-119, 2026-09-09 — see the long comment on the shared copy for the
+# incident). This suite's own measured budget was 6.0s and stays 6.0s here, bound once so every
+# bare call below keeps that number without retyping it, and any call that states its own timeout
+# keeps overriding it exactly as before.
+import functools
+wait_for = functools.partial(wait_for, timeout=6.0, step=0.05)
 
 
 # ---------------------------------------------------------------- bake once
@@ -727,19 +723,8 @@ else:
         def frame_frac(br, sel=WORK):
             # The write is a requestAnimationFrame away from the event that drove it (`paint()`
             # runs once per frame, not synchronously off the dispatch) — poll the DOM's own
-            # transform rather than reading it the instant the verb lands. A non-empty transform
-            # alone is not enough: `verb` flips synchronously inside the event handler, before the
-            # next `paint()` tick ever runs, so a transform already written by an EARLIER frame
-            # (the hover/arrive one, near zero) reads as truthy too, on a load heavy enough to widen
-            # the gap between the two — caught live under concurrent suite load, never on a lone
-            # run. Two chained `requestAnimationFrame`s force at least one full tick of pass-hand's
-            # own loop (it reschedules every frame while the hand is on) to run and land before the
-            # read below, so the transform this returns is the current verb's own paint, not a
-            # stale one still standing from before it.
+            # transform rather than reading it the instant the verb lands.
             wait_for(br, "!!document.querySelector(%s).style.transform" % json.dumps(sel), timeout=3.0)
-            br.evaluate("new Promise(function(resolve){"
-                        "requestAnimationFrame(function(){requestAnimationFrame(resolve)})})",
-                        awaitp=True)
             style = br.evaluate("document.querySelector(%s).style.transform" % json.dumps(sel))
             width = br.evaluate(
                 "document.querySelector(%s).getBoundingClientRect().width" % json.dumps(sel))

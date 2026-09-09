@@ -42,7 +42,7 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tests"))
 import engine_build as build_site  # noqa: E402
-from headless import serve, Browser, chrome_available  # noqa: E402
+from headless import serve, Browser, chrome_available, wait_for  # noqa: E402
 
 SITE_URL = "https://synth.example.com"
 FIXTURE = Path(__file__).resolve().parent / "fixture_pass_composed.json"
@@ -114,18 +114,15 @@ def js(br, body):
     return json.loads(br.evaluate("JSON.stringify((function(){%s})())" % body))
 
 
-def wait_for(br, expr, timeout=15.0, step=0.2):
-    """Poll a JS expression until it returns truthy (or the deadline) — no fixed-sleep races.
-    15s of headroom: a road's own typed duration runs as long as 11000ms (pass-composer.js), so a
-    budget shorter than that reads the panel before a real crossing has had time to land."""
-    end = time.time() + timeout
-    val = None
-    while time.time() < end:
-        val = br.evaluate(expr)
-        if val:
-            return val
-        br.sleep(step)
-    return val
+# `wait_for` used to be a local copy of the same poll loop headless.py now carries once, shared
+# across every suite (row S-119, 2026-09-09 — see the long comment on the shared copy for the
+# incident). This suite's own measured budget stays 15s of headroom, because a road's own typed
+# duration runs as long as 11000ms (pass-composer.js) and a shorter budget reads the panel before a
+# real crossing has had time to land; the step stays 0.2s, both bound once here so every bare call
+# below keeps this suite's own numbers without retyping them, and any call that states its own
+# timeout keeps overriding it exactly as before.
+import functools
+wait_for = functools.partial(wait_for, timeout=15.0, step=0.2)
 
 
 def wait_ready(br, budget=150):
