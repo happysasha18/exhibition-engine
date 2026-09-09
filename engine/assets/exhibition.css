@@ -698,6 +698,23 @@ body.ex-crossing .exh-counter.loading{ opacity:1 !important; }   /* beats the cr
   :root{ --ex-share-b:16px; }           /* clear of the caption band's corner; x stays on the rail;
                                             the toast above the button rides the same variable */
 }
+/* A phone lying on its side (his word 2026-09-09 23:26). Above 640px the desktop plaque applied:
+   42vw of caption ran under the photograph, the photograph stopped at 82dvh in a window that has
+   nothing but height to give, and the plaque stood wherever the desktop put it. Here the photograph
+   takes 90dvh, the plaque keeps to the free column beside it — half the width minus half the
+   picture — and its type steps down to that column, the narrator line held to three lines. Ordered
+   after the width bands so it wins on a phone lying down and never reaches a desktop window. */
+@media (orientation:landscape) and (max-height:520px){
+  .exh-frame img.work{ max-height:90vh; max-height:90dvh; max-width:70vw; }
+  .exh-frame{ padding-bottom:0; }
+  .exh-capzone{ inset-inline-start:16px; inset-inline-end:auto; bottom:14px; padding-inline-start:11px;
+    max-width:calc(50vw - 45dvh - 30px); min-width:130px; }
+  .exh-capzone .title{ font-size:17px; }
+  .exh-capzone .title.untitled{ font-size:15px; }
+  .exh-capzone .told{ font-size:13px; margin-top:6px; max-width:100%;
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .exh-capzone .meta{ font-size:10.5px; }
+}
 /* INV-98: below 400px — the band of the smallest phones — the caption steps one step down the type
    scale so the balanced block clears the picture. The step count is an owner knob (config
    exhibition.caption_narrow_step, engine default 1, 0 disables); the client sets --cap-narrow-step at
