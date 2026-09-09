@@ -3791,6 +3791,7 @@
     // now" moment, whatever road brought the visit here. Guarded on `passHandAsked`, so every call
     // after the first is a no-op.
     passHandOpen();
+    passTouchOpen();
     const cmd = declare({ fromEl: fromEl || null, toEl: toEl || null, dir: 1, span: 0,
                           kind: "jump", cause: cause, velocity: 0 });
     if (cmd) passLandNow();
@@ -4400,6 +4401,33 @@
   }
 
   let passHand = null, passHandAsked = false, passHandLastEl = null;
+  // THE TOUCH LAYER TRAVELS BESIDE THE HAND (`pass-touch.js`, his word 2026-09-09 19:26): over the
+  // standing work a hover or a finger plays one effect — a kaleidoscope, a lens, a ripple, and more —
+  // chosen from the work's own record by that file's own rules. Same classic-script join as the hand,
+  // asked for once at the walk's first landing, attached on the same pointer roads the hand takes.
+  // The record it reads is the one the records wave lands (`passRecordsMap`); before the wave lands
+  // the file plays its own default and takes the record on the next attach.
+  let passTouch = null, passTouchAsked = false;
+  const PASS_TOUCH_SRC = "pass-touch.js";
+  function passTouchSet(t) {
+    passTouch = (t && typeof t.attach === "function" && typeof t.detach === "function") ? t : null;
+  }
+  function passTouchOpen() {
+    if (passTouchAsked) return;
+    passTouchAsked = true;
+    try {
+      window.__@@NS@@PassTouch = passTouchSet;
+      const s = document.createElement("script");
+      s.src = PASS_TOUCH_SRC;
+      s.async = true;
+      s.onerror = () => { passTouchSet(null); };
+      document.head.appendChild(s);
+    } catch (e) { passTouchSet(null); }
+  }
+  function passTouchAttach(img, w) {
+    if (!passTouch || !img || !w) return;
+    try { passTouch.attach(img, passRecordsMap[String(w.id)] || null); } catch (e) {}
+  }
   function passHandSet(h) {
     passHand = (h && typeof h.attach === "function" && typeof h.detach === "function"
                 && typeof h.report === "function") ? h : null;
@@ -4462,6 +4490,7 @@
     if (!w) return;
     passHandLastEl = img;
     if (passHand) passHand.attach(img, w);
+    passTouchAttach(img, w);
   }
   addEventListener("pointerdown", passHandAttachFrom, { capture: true, passive: true });
   // THE HAND ANSWERS A HOVER TOO (measured 2026-09-06 on a staged headless sweep of tlvphotos.com:
@@ -4478,11 +4507,15 @@
   // synchronously with `zoomOpen` itself (12-zoom-inspect-grab.js) — so observing it needs no change
   // to that file and no poll of any kind.
   new MutationObserver(() => {
-    if (!passHand) return;
-    if (document.body.classList.contains("ex-zoom")) { passHand.detach(); return; }
+    if (!passHand && !passTouch) return;
+    const covered = document.body.classList.contains("ex-zoom");
+    const crossing = document.body.classList.contains("ex-crossing");
+    if (passTouch && (covered || crossing)) { try { passTouch.detach(); } catch (e) {} }
+    if (covered) { if (passHand) passHand.detach(); return; }
     if (passHandLastEl && document.body.contains(passHandLastEl)) {
       const w = passHandWorkFor(passHandLastEl);
-      if (w) passHand.attach(passHandLastEl, w);
+      if (w && passHand) passHand.attach(passHandLastEl, w);
+      if (w && !crossing) passTouchAttach(passHandLastEl, w);
     }
   }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
 

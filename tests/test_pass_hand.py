@@ -720,11 +720,16 @@ else:
         # same discipline row18 already keeps), and checks BOTH directions of regression: a hover
         # term shrunk back toward the breath alone (under 0.02) and one that grew past the press's
         # own reach (no longer "about half").
-        def frame_frac(br, sel=WORK):
+        def frame_frac(br, sel=WORK, since=""):
             # The write is a requestAnimationFrame away from the event that drove it (`paint()`
             # runs once per frame, not synchronously off the dispatch) — poll the DOM's own
-            # transform rather than reading it the instant the verb lands.
-            wait_for(br, "!!document.querySelector(%s).style.transform" % json.dumps(sel), timeout=3.0)
+            # transform rather than reading it the instant the verb lands. `since` is the transform
+            # that stood BEFORE the gesture: a hover at the centre already paints a zero translate,
+            # so "any transform" was true before the press painted (read stale 2026-09-09, when an
+            # extra pointer listener on the walk shifted the frame by a tick); the wait is for the
+            # gesture's own write, which is a transform other than the one that stood before it.
+            wait_for(br, "(()=>{const t=document.querySelector(%s).style.transform;return !!t&&t!==%s;})()"
+                         % (json.dumps(sel), json.dumps(since)), timeout=3.0)
             style = br.evaluate("document.querySelector(%s).style.transform" % json.dumps(sel))
             width = br.evaluate(
                 "document.querySelector(%s).getBoundingClientRect().width" % json.dumps(sel))
@@ -750,10 +755,12 @@ else:
             wait_for(br, HAND_READY)
             wait_span(br, "mix")
             fire(br, WORK, "pointerover", "mouse", 0.5, 0.5, 221)
+            br.sleep(0.1)
+            before_press = br.evaluate("document.querySelector(%s).style.transform" % json.dumps(WORK))
             fire(br, WORK, "pointerdown", "mouse", 0.5, 0.5, 221)
             fire(br, WORK, "pointermove", "mouse", 0.95, 0.5, 221)
             wait_for(br, verb_expr("lean"))
-            press_frac = frame_frac(br)
+            press_frac = frame_frac(br, since=before_press)
 
         print(f"\nhover reach vs press reach — hover_frac={hover_frac} press_frac={press_frac}")
         check(ROWS[18],
