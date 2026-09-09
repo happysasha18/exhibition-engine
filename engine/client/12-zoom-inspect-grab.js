@@ -593,7 +593,7 @@
   // 15-motion wins), and on a second finger (so the inspect pinch wins). A door window (no hung-work
   // identity) keeps the gracious toast, never the ceremony (F1). The ~500ms / px values are Alexander's
   // device-feel tune, like the 1.7.5 swipe constants — a touch input threshold, never tempo-scaled.
-  const LP_MS = 320;                                      // [default] the hold that arms the grab (his 2026-07-23: 500→400→320, a touch wanted the gift a further ~20% sooner)
+  const LP_MS = 600;                                      // [default] the hold that arms the grab (his 2026-07-23: 500→400→320; his 2026-09-09 23:45: 320→600 — a finger resting on a work now drives the touch layer's effect, and a settle while stroking must not throw the card)
   const LP_PX = 10;                                       // [default] the drift that cancels it (a swipe)
   let lpTimer = 0, lpX = 0, lpY = 0, lpImg = null, lpPtrs = 0;
   function lpCancel() { if (lpTimer) { clearTimeout(lpTimer); lpTimer = 0; } lpImg = null; }

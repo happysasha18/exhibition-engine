@@ -5025,7 +5025,15 @@
   function passTouchSet(t) {
     passTouch = (t && typeof t.attach === "function" && typeof t.detach === "function") ? t : null;
     if (passTouch && typeof passTouch.host === "function") {
-      try { passTouch.host({ recordFor: (id) => passRecordsMap[String(id)] || null }); } catch (e) {}
+      try {
+        passTouch.host({
+          recordFor: (id) => passRecordsMap[String(id)] || null,
+          // EX-PULSE: what a hand lingered on — one beat per stay on a work, carrying the effect the
+          // record chose, how long the hand stayed, how far it stroked, how often it tapped, and
+          // whether it was a finger or a mouse (a closed word each; the dwell and the stroke are numbers)
+          pulse: (workId, extra) => pulse("touch_effect", workId, extra),
+        });
+      } catch (e) {}
     }
   }
   function passTouchOpen() {
@@ -8762,7 +8770,7 @@
   // 15-motion wins), and on a second finger (so the inspect pinch wins). A door window (no hung-work
   // identity) keeps the gracious toast, never the ceremony (F1). The ~500ms / px values are Alexander's
   // device-feel tune, like the 1.7.5 swipe constants — a touch input threshold, never tempo-scaled.
-  const LP_MS = 320;                                      // [default] the hold that arms the grab (his 2026-07-23: 500→400→320, a touch wanted the gift a further ~20% sooner)
+  const LP_MS = 600;                                      // [default] the hold that arms the grab (his 2026-07-23: 500→400→320; his 2026-09-09 23:45: 320→600 — a finger resting on a work now drives the touch layer's effect, and a settle while stroking must not throw the card)
   const LP_PX = 10;                                       // [default] the drift that cancels it (a swipe)
   let lpTimer = 0, lpX = 0, lpY = 0, lpImg = null, lpPtrs = 0;
   function lpCancel() { if (lpTimer) { clearTimeout(lpTimer); lpTimer = 0; } lpImg = null; }
@@ -9736,7 +9744,13 @@
   if (HAS_TOUCH) {
     try { window.@@NS_UPPER@@Motion.touchPager = true; } catch (e) {}
     let tY = null, tX = null, tLast = 0, tLastX = 0, tMoved = false;
+    let tPath = 0, tOnWork = false;                    // the finger's whole path, and whether it started on a hung work
     const SWIPE_MIN = 24;                              // net px that counts as a swipe (a tap/hold does nothing)
+    // A finger that WORKED THE PICTURE does not page when it lifts (his word 2026-09-09 23:45: a stroke
+    // driving the touch layer's effect ended in a half-swipe and the walk stepped). A swipe is a straight
+    // flick — its path is its net travel; a stroke wanders, so its path runs well past the net. The
+    // margin below is the wander a straight thumb still shows; a gesture past it stays on the work.
+    const WORK_WANDER = 1.6, WORK_WANDER_PX = 30;
     const NATIVE_TOUCH = "#ex-side, #ex-quiz-card, #ex-gift-card, #ex-sound, .ex-share";
     addEventListener("touchstart", (e) => {
       if (!walkOwnsInput() || e.touches.length !== 1
@@ -9745,7 +9759,8 @@
       }
       tY = tLast = e.touches[0].clientY;
       tX = tLastX = e.touches[0].clientX;
-      tMoved = false;
+      tMoved = false; tPath = 0;
+      tOnWork = !!(e.target && e.target.closest && e.target.closest(".exh-frame img.work"));
     }, { passive: true });
     // EX-CHROME: does some part of the face under the finger truly take this drag's axis?
     function faceConsumes(target, horiz) {
@@ -9798,9 +9813,10 @@
         if (e.touches.length === 1 && walkOwnsInput()
             && !(e.target && e.target.closest && e.target.closest(NATIVE_TOUCH))) {
           tY = tLast = e.touches[0].clientY;
-          tX = tLastX = e.touches[0].clientX; tMoved = false;
+          tX = tLastX = e.touches[0].clientX; tMoved = false; tPath = 0; tOnWork = false;
         } else return;
       }
+      tPath += Math.hypot(e.touches[0].clientX - tLastX, e.touches[0].clientY - tLast);
       tLast = e.touches[0].clientY;
       tLastX = e.touches[0].clientX;
       if (Math.abs(tLast - tY) > 6) tMoved = true;
@@ -9813,6 +9829,7 @@
       const fromX = tX, toX = tLastX, toY = tLast;
       tY = tX = null;
       if (!tMoved || Math.abs(net) < SWIPE_MIN) return;
+      if (tOnWork && tPath > WORK_WANDER * Math.abs(net) + WORK_WANDER_PX) return;   // the finger worked the picture — no page
       stepFrame(net > 0 ? 1 : -1, 0, {
         kind: "touch", x: toX, y: toY,
         energy: Math.min(1, Math.hypot(toX - fromX, net) / Math.max(innerWidth, innerHeight) * 3)

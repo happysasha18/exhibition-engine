@@ -51,6 +51,8 @@ REGISTRY = {
     "inspect",     # EX-PICSTAT (INV-41): a settled zoom lays one look — owed at CODE time (the door_ready precedent)
     "error",       # EX-ERROR (INV-41): a fault reports itself — closed kind + load phase, capped, never a raw string
     "friction",    # EX-FRICTION (INV-41/INV-99): frustration reports itself — rage-tap/rage-swipe, closed friction_kind + where, capped
+    # the touch layer over a standing work (his word 2026-09-09 23:46): what a hand lingered on
+    "touch_effect",
 }
 
 TMP = Path(tempfile.mkdtemp(prefix="synth_pulse_"))

@@ -29,8 +29,27 @@
   // The client hands over `recordFor(id)` at join: the record a work's wave lands, or null while
   // it is still in the air. A work attached before its record landed is re-read on the hand's next
   // arrival, so the first touch after the wave plays what the record chose, not the default.
-  var hostRecordFor = null;
-  function host(api) { hostRecordFor = (api && typeof api.recordFor === "function") ? api.recordFor : null; }
+  var hostRecordFor = null, hostPulse = null;
+  function host(api) {
+    hostRecordFor = (api && typeof api.recordFor === "function") ? api.recordFor : null;
+    hostPulse = (api && typeof api.pulse === "function") ? api.pulse : null;
+  }
+  // ONE BEAT PER STAY. A stay opens when the hand arrives on the work and closes when it leaves or the
+  // layer detaches; a stay shorter than three tenths of a second is a pass-by and says nothing. The
+  // beat carries the effect, the dwell in milliseconds, the stroke as hundredths of the picture's
+  // width travelled, the taps, and the kind of hand.
+  var stay = null;
+  function stayOpen(kind) { stay = { at: now(), taps: 0, travel: 0, kind: kind }; }
+  function stayClose() {
+    if (!stay || !att) { stay = null; return; }
+    var dwell = Math.round(now() - stay.at);
+    var s = stay; stay = null;
+    if (dwell < 300 || !hostPulse) return;
+    try {
+      hostPulse(att.workId, { effect: att.effect.id, dwell_ms: dwell, stroke: Math.round(s.travel * 100),
+                              taps: s.taps, hand: s.kind, chosen: att.record ? "record" : "default" });
+    } catch (e) {}
+  }
 
   // ---- the effects -----------------------------------------------------------------------------
   // `params` are the numbers the shader reads; `assign` overrides them from the record.
@@ -495,7 +514,7 @@
   // ---- the overlay -----------------------------------------------------------------------------
   var S = null;        // the one renderer: canvas, gl, program, uniforms, texture
   var att = null;      // { img, container, record, effect, params, assigned }
-  var hand = { p: { x: 0.5, y: 0.5 }, inside: false, down: false, amt: 0, enteredAt: 0, rip: [] };
+  var hand = { p: { x: 0.5, y: 0.5 }, inside: false, down: false, amt: 0, enteredAt: 0, rip: [], kind: "mouse", travel: 0 };
   var t0 = (typeof performance !== "undefined" ? performance.now() : Date.now());
   var raf = 0, lastErr = null, frames = 0;
   var reduced = false;
@@ -631,7 +650,11 @@
     var target = hand.inside ? 1 : 0;
     hand.amt += (target - hand.amt) * (hand.inside ? 0.16 : 0.09);
     if (Math.abs(target - hand.amt) < 0.003) hand.amt = target;
-    var hold = hand.inside ? (now() - hand.enteredAt) / 1000 : 0;
+    // ON A PHONE THE EFFECT GROWS WITH THE STROKE, NOT WITH THE HOLD: a finger resting still on a work
+    // is the walk's own gift gesture (his word 2026-09-09 23:45), so stillness belongs to it and the
+    // effect's «hold» reads the path the finger has travelled over the picture instead — a stroke across
+    // the whole picture counts as two and a half seconds of a mouse's hover.
+    var hold = !hand.inside ? 0 : (hand.kind === "touch" ? Math.min(4, hand.travel * 2.5) : (now() - hand.enteredAt) / 1000);
     var aspect = S.canvas.width / S.canvas.height;
     var ia = S.iw / S.ih;
     var cover = ia > aspect ? [aspect / ia, 1] : [1, ia / aspect];
@@ -707,15 +730,21 @@
              y: clamp(1 - (e.clientY - r.top) / Math.max(1, r.height), 0, 1) };
   }
   function enter(e) {
+    hand.kind = e.pointerType === "touch" ? "touch" : "mouse";
     if (!hand.inside) {
-      hand.inside = true; hand.enteredAt = now();
+      hand.inside = true; hand.enteredAt = now(); hand.travel = 0;
+      stayOpen(hand.kind);
       if (att && !att.record && hostRecordFor && att.workId != null) {
         var rec = null;
         try { rec = hostRecordFor(att.workId); } catch (err) { rec = null; }
         if (rec) reassign(rec);
       }
     }
-    hand.p = pos(e);
+    var q = pos(e);
+    var step = Math.hypot(q.x - hand.p.x, q.y - hand.p.y);
+    if (hand.kind === "touch") hand.travel += step;
+    if (stay && step < 0.5) stay.travel += step;
+    hand.p = q;
     wake();
   }
   // The record landed after the attach: the same choice attach would have made, on the live hand.
@@ -729,7 +758,7 @@
     });
     att.record = rec; att.effect = effect; att.params = params; att.assigned = assigned;
   }
-  function leave() { hand.inside = false; hand.down = false; wake(); }
+  function leave() { stayClose(); hand.inside = false; hand.down = false; wake(); }
   function onMove(e) {
     if (!att) return;
     if (over(e)) enter(e); else if (hand.inside && !hand.down) leave();
@@ -741,6 +770,7 @@
     var t = (now() - t0) / 1000;
     hand.rip.push({ x: hand.p.x, y: hand.p.y, t: t, s: 1 });
     if (hand.rip.length > 8) hand.rip.shift();
+    if (stay) stay.taps += 1;
     wake();
   }
   function onUp(e) {
@@ -793,6 +823,7 @@
     }
     if (opts.params) Object.keys(opts.params).forEach(function (k) { params[k] = opts.params[k]; });
     var same = att && att.img === img;
+    if (att && !same) stayClose();
     var workId = opts.workId != null ? opts.workId : (record && record.id != null ? record.id
                  : (img.closest && img.closest(".exh-frame") && img.closest(".exh-frame").dataset.id) || null);
     att = { img: img, container: container, record: record || null, workId: workId, override: opts.effect || null,
@@ -806,6 +837,7 @@
   }
   function detach() {
     if (!att) return;
+    stayClose();
     att = null;
     hand.inside = false; hand.down = false; hand.amt = 0; hand.rip = [];
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
