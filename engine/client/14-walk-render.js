@@ -50,13 +50,6 @@
     const aboutHref = !AB ? "" :
       (FL && AB.langs.indexOf(FL.code) >= 0 && FL.code !== AB.fallback)
         ? "/about/" + FL.code : "/about";
-    // S-115: a link to the OTHER road, beside "more" and "exit" — his word of 2026-09-05: a visitor
-    // on either road can reach the other. Which road this bundle is serving is read off cfg.pass AS
-    // BAKED, never passGet() — a visitor's own calm toggle (S-33) changes only what plays this
-    // session, not which address served the page, and the two must not be confused.
-    const onClassic = ((cfg && cfg.pass) || {}).visualLayer !== "pass";
-    const roadHref = onClassic ? "/" : "/classic/";
-    const roadWord = onClassic ? (FT.crossings || CROSSINGS_EN) : (FT.classic || CLASSIC_EN);
     const fin = document.createElement("section");
     fin.className = "exh-fin"; fin.id = "exh-fin";
     if (FL) {
@@ -68,7 +61,6 @@
       '<div class="row">' +
       (spent ? "" : `<button type="button" class="more" id="ex-unfold">${moreLabel} ↓</button>`) +
       (aboutHref && aboutWord ? `<a class="about" id="ex-about" href="${aboutHref}">${aboutWord}</a>` : "") +
-      `<a class="road" id="ex-road" href="${roadHref}">${roadWord}</a>` +
       (doorAvailable ? `<button type="button" class="back" id="ex-return">${FT.exit || "выход"}</button>` : "") +
       "</div>" +
       // the archive signs its rooms (EX-COPY) — one baked line; missing field renders nothing

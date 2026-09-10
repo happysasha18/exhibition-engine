@@ -75,11 +75,6 @@
   // is the proposal's own word choice, used throughout its text — pending his word on the open
   // question of what it should be called (the doc names the collision with «меньше движения»).
   const CALM_EN = "calm";
-  // S-115: the two roads' own names, on the closing screen's link to whichever one a visitor is
-  // not already standing on (EX-ABOUT's reasoning applies here too — the closing screen already
-  // offers a choice of where to go). Fallback ENGLISH, the same law as every other T.* word above.
-  const CLASSIC_EN = "classic";
-  const CROSSINGS_EN = "crossings";
   const clampInt = (x, dflt, lo, hi) => {
     const n = parseInt(x, 10);
     return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : dflt;
@@ -181,4 +176,3 @@
   try { history.scrollRestoration = "manual"; } catch (e) {}
   const pushFace = (st) => { try { history.pushState({ @@NS@@: st }, ""); } catch (e) {} };
   const replaceFace = (st) => { try { history.replaceState({ @@NS@@: st }, ""); } catch (e) {} };
-

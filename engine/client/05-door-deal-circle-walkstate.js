@@ -5,11 +5,10 @@
   const walkSeen = new Set();
 
   // EX-DOOR-3 (door_diversity): a FRESH, evenly-spread, place-guaranteed set every open. The pool
-  // spans the whole living gallery (baked with five axes + a `place` flag). We min-max normalize the
-  // five axes, SEED near the set's centre among the works UNSEEN this round (a random pick among the
-  // closest few — the variety knob per open), then greedily add the work FARTHEST from the picked set
-  // while keeping both quotas reachable: at least PLACE_MIN place works and at least FRESH_MIN works
-  // unseen this round (INV-75 — else the farthest-point spread keeps surfacing the same extreme poles).
+  // spans the whole living gallery (baked with five axes + a `place` flag). At runtime we start from
+  // a fresh random work, then choose from the top half of sufficiently distinct candidates — never
+  // the single farthest one. This keeps a hand coherent without funneling every door to the same
+  // metric extremes. Place and freshness floors stay reachable at every pick.
   // The unseen memory is per-round: when it can no longer honour either fraction the round resets and
   // the whole gallery is walked again. The ORDER varies too — a random axis and direction each open,
   // since there is no single right order over these axes.
@@ -55,9 +54,8 @@
       shown = new Set();                                  // the round is spent → a new round over the whole pool
       isFresh = () => true;                               // every work is fresh again
     }
-    // both quotas hold together because we only ADD a work when the remaining slots can still be filled
-    // to meet the fresh AND place counts (a small feasibility test), and among the still-feasible works
-    // we take the FARTHEST (spread), with stale works discounted so fresh is preferred while the pool is deep.
+    // Both quotas hold together because we only ADD a work when the remaining slots can still be filled
+    // to meet the fresh AND place counts (a small feasibility test).
     const feasibleAfter = (cand, picked, fc, pc) => {
       const nfc = fc + (isFresh(cand) ? 1 : 0), npc = pc + (isPlace(cand) ? 1 : 0);
       const nSlots = n - picked.length - 1;              // slots left AFTER adding cand
@@ -73,24 +71,23 @@
       }
       return af >= rf && ap >= rp && afp >= Math.max(0, rf + rp - nSlots);
     };
-    // seed near the centre among FRESH works — a novel yet still-typical start each open
-    const mean = DPARAMS.map((_, k) => V.reduce((s, v) => s + v[k], 0) / V.length);
-    const freshIdx = pool.map((_, i) => i).filter(isFresh);
-    const seedFrom = (freshIdx.length ? freshIdx : pool.map((_, i) => i))
-      .sort((a, b) => d2(V[a], mean) - d2(V[b], mean));
-    const seedK = Math.min(seedFrom.length, Math.max(3, Math.ceil(pool.length * 0.15)));
-    const picked = [seedFrom[Math.floor(Math.random() * seedK)]];
+    // A fresh random seed gives the full living gallery an honest chance to open the door.
+    const freshIdx = pool.map((_, i) => i).filter((i) => isFresh(i) && feasibleAfter(i, [], 0, 0));
+    const seedFrom = freshIdx.length ? freshIdx : pool.map((_, i) => i).filter((i) => feasibleAfter(i, [], 0, 0));
+    const picked = [seedFrom[Math.floor(Math.random() * seedFrom.length)]];
     let fc = isFresh(picked[0]) ? 1 : 0, pc = isPlace(picked[0]) ? 1 : 0;
-    while (picked.length < n) {                           // greedy farthest-point, quota-feasible + fresh-first
-      let best = -1, bd = -Infinity, bestAny = -1, bdAny = -Infinity;
+    while (picked.length < n) {
+      const ranked = [], fallback = [];
       for (let i = 0; i < pool.length; i++) {
         if (picked.indexOf(i) >= 0) continue;
-        let md = minTo(i, picked);
-        if (!isFresh(i)) md *= 0.15;                      // discount stale → fresh preferred while pool is deep
-        if (md > bdAny) { bdAny = md; bestAny = i; }
-        if (md > bd && feasibleAfter(i, picked, fc, pc)) { bd = md; best = i; }
+        const candidate = { i, score: minTo(i, picked) + (isFresh(i) ? 0.12 : 0) };
+        fallback.push(candidate);
+        if (feasibleAfter(i, picked, fc, pc)) ranked.push(candidate);
       }
-      const add = best >= 0 ? best : bestAny;             // feasibility keeps a candidate; fallback is a safety net
+      const choices = ranked.length ? ranked : fallback;
+      choices.sort((a, b) => b.score - a.score);
+      const band = Math.max(1, Math.ceil(choices.length * 0.5));
+      const add = choices[Math.floor(Math.random() * band)].i;
       picked.push(add);
       if (isFresh(add)) fc++;
       if (isPlace(add)) pc++;
@@ -306,4 +303,3 @@
     return true;
   }
   const spentUnfolds = () => Math.max(0, Math.floor((shown - SPREAD) / UNFOLD));
-
