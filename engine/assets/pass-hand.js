@@ -493,7 +493,11 @@
     var hoverAmp = lean.engaged ? 0 : leanCap() / 2;
     var hoverTilt = handSpan("tilt") / 16;
     var hoverMix = attend.x * hoverAmp;
-    return { mix: clamp(lean.value + hoverMix + breathValue(t), -capMix, capMix),
+    // His word 2026-09-10 21:08: the work does not move on its own — the mouse and the tilt of
+    // the phone are dynamics enough. The breath is still computed and reported (the voice's own
+    // rows read it), but it no longer reaches the picture: what is painted is the hand's lean,
+    // the hover's free point and the matter's ring after a strike, nothing that runs by itself.
+    return { mix: clamp(lean.value + hoverMix, -capMix, capMix),
              tilt: clamp(attend.y * hoverTilt + ringValue(t), -capTilt, capTilt) };
   }
 
