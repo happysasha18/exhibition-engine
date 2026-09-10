@@ -95,6 +95,11 @@
   // pinned progress the frame loop stops reading the wall clock, so a seeded run can be compared
   // frame against frame (§9 row 10). A live visit never sets either.
   var pinClock = null, pinProgress = null, fixedScale = false;
+  // Production always mounts the passage over the visitor's whole viewport.  The Lab is an
+  // inspector, however: it must exercise this very host without taking the rest of the bench away.
+  // `stageMount` is therefore an optional, explicit element supplied before the first offer.  A
+  // normal walk never supplies it and continues to own the whole window.
+  var stageMount = null;
 
   // ================================================================================================
   // THE FRAME STAGE — the host's own hardware, owned by nobody else (§1.2, §7)
@@ -188,18 +193,19 @@
     canvas.setAttribute("aria-hidden", "true");
     canvas.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%;display:block;" +
       "z-index:2147483000;background:#08080a;pointer-events:none;visibility:hidden;";
-    // THE FRAME IS A REAL ELEMENT, AND IT IS WHAT THE CANVAS'S COORDINATES ARE READ AGAINST. It is
-    // `position:fixed` at the window's four corners, so a child positioned at `left:0;top:0` stands
-    // at the viewport's origin — which is where `hangGeometry` measures, `getBoundingClientRect`
-    // being viewport-relative. Its `overflow:hidden` crops what descendants paint AFTER their
-    // transforms, so a carrier grown past the window (`camFit`, below) is cut at the window's edge
-    // rather than handed to the compositor as off-screen pixels.
+    // THE FRAME IS A REAL ELEMENT, AND IT IS WHAT THE CANVAS'S COORDINATES ARE READ AGAINST. In a
+    // visitor walk it is fixed at the window's four corners. The optional Lab mount keeps exactly
+    // the same renderer and score inside its own inspected rectangle; it is set before a stage
+    // exists, so one transaction can never change frames under another.
+    var mounted = !!(stageMount && stageMount.nodeType === 1 && document.contains(stageMount));
     frameEl = document.createElement("div");
     frameEl.setAttribute("aria-hidden", "true");
-    frameEl.style.cssText = "position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden;" +
-      "z-index:2147483000;pointer-events:none;visibility:hidden;";
+    frameEl.style.cssText = (mounted
+      ? "position:absolute;left:0;top:0;width:100%;height:100%;"
+      : "position:fixed;left:0;top:0;width:100%;height:100%;") +
+      "overflow:hidden;z-index:2147483000;pointer-events:none;visibility:hidden;";
     frameEl.appendChild(canvas);
-    document.body.appendChild(frameEl);
+    (mounted ? stageMount : document.body).appendChild(frameEl);
     census.canvases++;
     var gl = canvas.getContext("webgl2", {
       antialias: false, alpha: false, depth: false, stencil: false,
@@ -297,11 +303,13 @@
 
   function stageResize() {
     if (!stage) return;
-    // THE FRAME IS THE WINDOW, read off the browser rather than off any layout. The frame element
-    // itself was sized `100%` of the viewport once, at `stageMake`, so a resize moves it with the
-    // window without a write here.
-    cssW = Math.max(1, Math.round(window.innerWidth || 1));
-    cssH = Math.max(1, Math.round(window.innerHeight || 1));
+    // The public frame is the window.  In an explicit Lab mount the frame is that mount's measured
+    // rectangle, so the same camera and shader arithmetic can be inspected without covering the
+    // bench around it.
+    var box = stageMount && frameEl && frameEl.parentNode === stageMount
+      ? stageMount.getBoundingClientRect() : null;
+    cssW = Math.max(1, Math.round(box ? box.width : (window.innerWidth || 1)));
+    cssH = Math.max(1, Math.round(box ? box.height : (window.innerHeight || 1)));
     dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
     var s = STEPS[stepIx];
     var w = Math.max(1, Math.round(cssW * dpr * s));
@@ -4379,6 +4387,11 @@
     if (opts.clockPin !== undefined) pinClock = opts.clockPin === null ? null : Number(opts.clockPin);
     if (opts.progressPin !== undefined) pinProgress = opts.progressPin === null ? null : Number(opts.progressPin);
     if (opts.fixedScale !== undefined) fixedScale = !!opts.fixedScale;
+    // A mount is a creation-time concern.  Ignoring a late request is safer than moving an active
+    // canvas between DOM trees while its transaction still owns the frame.
+    if (opts.stageMount !== undefined && !stage) {
+      stageMount = opts.stageMount && opts.stageMount.nodeType === 1 ? opts.stageMount : null;
+    }
   }
   function report() {
     var s = times.slice().sort(function (a, b) { return a - b; });
