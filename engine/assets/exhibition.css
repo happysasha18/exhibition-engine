@@ -678,13 +678,22 @@ body.ex-crossing .exh-counter.loading{ opacity:1 !important; }   /* beats the cr
 @media (hover:hover){ .exsnd-calm:hover{ color:var(--ink); border-color:var(--muted-2); } }
 .exsnd-calm[aria-pressed="true"]{ color:var(--accent);
   border-color:color-mix(in srgb, var(--accent) 40%, transparent); }
-/* the next track — the same capsule as the calm switch, one glyph wide */
-.exsnd-next{ font-family:var(--mono); font-size:16px; line-height:1; color:var(--muted-2);
-  background:transparent; border:1px solid var(--hair); border-radius:999px;
-  width:36px; height:28px; padding:0 0 2px; flex:none; cursor:pointer;
-  transition:color calc(.3s*var(--tempo)) var(--ease), border-color calc(.3s*var(--tempo)) var(--ease); }
-.exsnd-next:focus-visible{ color:var(--ink); border-color:var(--muted-2); }
-@media (hover:hover){ .exsnd-next:hover{ color:var(--ink); border-color:var(--muted-2); } }
+/* the track's own title is the control that opens the list; the list stands over the tray, one
+   finger-high row per track, the playing one lit */
+.exsnd-pick{ cursor:pointer; background:transparent; border:0; padding:0; text-align:end; color:var(--muted);
+  font:inherit; font-size:11px; letter-spacing:.08em; line-height:1.5; }
+.exsnd-pick::after{ content:" ▾"; color:var(--faint); }
+.exsnd-pick:focus-visible, .exsnd-pick[aria-expanded="true"]{ color:var(--ink); }
+@media (hover:hover){ .exsnd-pick:hover{ color:var(--ink); } }
+.exsnd-list{ position:absolute; inset-inline-end:0; top:calc(100% + 8px); display:flex; flex-direction:column;
+  min-width:200px; max-width:min(320px, 86vw); padding:6px; border:1px solid var(--hair); border-radius:12px;
+  background:color-mix(in srgb, var(--bg-deep) 92%, transparent); backdrop-filter:blur(10px); z-index:2; }
+.exsnd-list [role=option]{ min-height:44px; padding:0 14px; border:0; border-radius:8px; background:transparent;
+  color:var(--muted); font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-align:end; cursor:pointer;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.exsnd-list [role=option][aria-selected="true"]{ color:var(--accent); }
+.exsnd-list [role=option]:focus-visible{ color:var(--ink); outline:1px solid var(--muted-2); }
+@media (hover:hover){ .exsnd-list [role=option]:hover{ color:var(--ink); background:rgba(255,255,255,.04); } }
 /* the volume slider — ≥44px touch target, thin visible track */
 .exsnd-vol{ -webkit-appearance:none; appearance:none; width:78px; height:44px; background:transparent;
   cursor:pointer; touch-action:none; }

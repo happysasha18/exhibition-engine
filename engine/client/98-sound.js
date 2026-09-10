@@ -20,11 +20,17 @@
     const CREDIT = EX.sound_credit || {};
     // EX-SOUND-TRACKS (his word 2026-09-10 21:14): more than one track walks beside the guest.
     // `sound_tracks` in the settings record lists them ({url, title, artist}); one track alone
-    // loops as it always did, a list plays through and wraps, a control in the tray skips ahead,
-    // and the track a visitor left on is the one a return finds (remembered beside the volume).
+    // loops as it always did, a list plays through and wraps. Which track a visit opens on is
+    // drawn at random (his word 2026-09-10 21:17); the title in the tray is a control that opens
+    // the list, and a track chosen by hand holds for the session.
     const LIST = Array.isArray(EX.sound_tracks) ? EX.sound_tracks.filter((t) => t && t.url) : [];
     const TRACKS = LIST.length ? LIST : [{ url: SND_URL, title: CREDIT.title || "", artist: CREDIT.artist || "" }];
-    let at = 0;
+    const PICK_KEY = "ex.sound.track";
+    let at = Math.floor(Math.random() * TRACKS.length);
+    try {
+      const chosen = sessionStorage.getItem(PICK_KEY);
+      if (chosen !== null && +chosen >= 0 && +chosen < TRACKS.length) at = +chosen;
+    } catch (e) {}
     const FADE_IN = 0.7, FADE_OUT = 0.8, DEFAULT_VOL = 0.3;
 
     const box = document.createElement("div");
@@ -35,16 +41,16 @@
     // the tray sits to the LEFT of the button (slides out on hover / while playing / focus-within);
     // the credit uses config-driven artist/title/url — never hardcoded content (INV-1)
     const artistHtml = `<span class="t exsnd-artist"><b></b></span>`;
-    const titleHtml = `<span class="t exsnd-title"></span>`;
+    const titleHtml = TRACKS.length > 1
+      ? `<button class="t exsnd-title exsnd-pick" type="button" aria-expanded="false" aria-label="${SNDT.a11y_next_track || A11Y_NEXT_TRACK_EN}"></button>`
+      : `<span class="t exsnd-title"></span>`;
     const linkHtml = CREDIT.url
       ? `<a href="${CREDIT.url}" target="_blank" rel="noopener">${CREDIT.url.replace(/^https?:\/\//, "")}</a>`
       : "";
     box.innerHTML =
       '<div class="exsnd-tray">' +
         '<span class="exsnd-cred">' + artistHtml + titleHtml + linkHtml + '</span>' +
-        (TRACKS.length > 1
-          ? '<button class="exsnd-next" type="button" aria-label="' + (SNDT.a11y_next_track || A11Y_NEXT_TRACK_EN) + '">›</button>'
-          : "") +
+
         // EX-CALM (S-33 variant C): the calm switch, riding the SAME tray as sound rather than a
         // fifth pinned corner (variant A's cost, declined) — see 01a-pass.js's passCalmGet/Set.
         '<button class="exsnd-calm" type="button" aria-pressed="false"></button>' +
@@ -60,17 +66,27 @@
           '<path d="M6.3 4.1 V12 M12.9 3 V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' +
           '<circle cx="4.2" cy="12" r="2.35" fill="currentColor"/><circle cx="10.8" cy="11" r="2.35" fill="currentColor"/>' +
         '</svg></span><span class="exsnd-eq"><i></i><i></i><i></i></span></button>';
+    // the list of tracks stands on the control itself, not in the tray, so it stays while the
+    // tray folds away under a pointer that has moved onto the list
+    if (TRACKS.length > 1) {
+      box.insertAdjacentHTML("beforeend",
+        '<div class="exsnd-list" role="listbox" hidden>' + TRACKS.map((t, i) =>
+          '<button type="button" role="option" data-i="' + i + '">' + (t.title || ("track " + (i + 1))) + '</button>').join("") + '</div>');
+    }
     document.body.appendChild(box);
     requestAnimationFrame(() => box.classList.add("show"));   // EX-ARRIVE: arrives on the breath
 
     const btn = box.querySelector(".exsnd-btn");
     const vol = box.querySelector(".exsnd-vol");
     const credArtist = box.querySelector(".exsnd-artist"), credTitle = box.querySelector(".exsnd-title");
+    const list = box.querySelector(".exsnd-list");
     function showCredit() {
       const t = TRACKS[at] || {};
       const artist = t.artist || CREDIT.artist || "", title = t.title || "";
       credArtist.hidden = !artist; credArtist.firstChild.textContent = artist;
-      credTitle.hidden = !title; credTitle.textContent = title ? "«" + title + "»" : "";
+      credTitle.hidden = !title && TRACKS.length < 2;
+      credTitle.textContent = title ? "«" + title + "»" : "";
+      if (list) list.querySelectorAll("[role=option]").forEach((o) => o.setAttribute("aria-selected", +o.dataset.i === at ? "true" : "false"));
     }
 
     // EX-CALM (S-33 variant C): reads/writes the SAME rung `?pass=visualLayer:off` already writes
@@ -103,13 +119,12 @@
     try { pref = JSON.parse(localStorage.getItem(SND_KEY) || "null"); } catch (e) {}
     if (!pref || pref.v !== VER) pref = null;
     if (pref && Number.isFinite(+pref.vol)) target = Math.min(1, Math.max(0, +pref.vol));
-    if (pref && Number.isInteger(+pref.track) && +pref.track >= 0 && +pref.track < TRACKS.length) at = +pref.track;
     vol.value = String(target);
     showCredit();
 
     function persist() {
       try {
-        localStorage.setItem(SND_KEY, JSON.stringify({ v: VER, on: desired, vol: target, greeted: greeted, track: at }));
+        localStorage.setItem(SND_KEY, JSON.stringify({ v: VER, on: desired, vol: target, greeted: greeted }));
       } catch (e) {}
     }
 
@@ -334,16 +349,26 @@
 
     // the next track: the credit turns, the element takes the new file, and a running player goes
     // on running — the gain stays where it stood, so the change is a cut, never a second fade-in
-    function next(auto) {
-      at = (at + 1) % TRACKS.length;
+    function pick(i, auto) {
+      at = ((i % TRACKS.length) + TRACKS.length) % TRACKS.length;
       showCredit();
-      persist();
-      if (!aud) return;
+      if (!auto) { try { sessionStorage.setItem(PICK_KEY, String(at)); } catch (e) {} }
+      if (!aud) { if (!auto && !desired) setDesired(true); return; }
       aud.src = TRACKS[at].url;
       if (playing || auto) { try { aud.play().catch(() => {}); } catch (e) {} }
+      else if (!auto && !desired) setDesired(true);   // a track chosen by hand is a track asked for
     }
-    const nextBtn = box.querySelector(".exsnd-next");
-    if (nextBtn) nextBtn.addEventListener("click", () => { next(false); });
+    function next(auto) { pick(at + 1, auto); }
+    if (list) {
+      const openList = (on) => { list.hidden = !on; credTitle.setAttribute("aria-expanded", on ? "true" : "false"); };
+      credTitle.addEventListener("click", () => openList(list.hidden));
+      list.addEventListener("click", (e) => {
+        const o = e.target.closest("[role=option]"); if (!o) return;
+        pick(+o.dataset.i, false); openList(false);
+      });
+      addEventListener("pointerdown", (e) => { if (!list.hidden && !box.contains(e.target)) openList(false); }, true);
+      addEventListener("keydown", (e) => { if (e.key === "Escape" && !list.hidden) openList(false); });
+    }
 
     btn.addEventListener("click", () => { setDesired(!desired); });
     vol.addEventListener("input", () => {
@@ -369,6 +394,6 @@
       window.@@NS_UPPER@@Sound = { state: () => ({ desired, playing, armed, ready, loading,
                                          currentTime: aud ? aud.currentTime : 0, track: at,
                                          tracks: TRACKS.length }),
-                         url: SND_URL, next: () => next(false) };
+                         url: SND_URL, next: () => next(false), pick: (i) => pick(i, false) };
     } catch (e) {}
   })();
