@@ -487,6 +487,7 @@
   const UNTITLED_EN = "untitled";
   const A11Y_CLOSE_EN = "close";
   const A11Y_VOLUME_EN = "volume";
+  const A11Y_NEXT_TRACK_EN = "next track";
   const A11Y_SOUND_EN = "sound";
   // N7-A11Y (INV-102): accessible names for the four modal layers + the walk frame's roledescription;
   // each localizes through EX-I18N (T.a11y_*), the fallback ENGLISH (source tongue), never a locale literal
@@ -11074,6 +11075,13 @@
     const SND_URL = (EX.sound_url || "").trim();
     if (!SND_URL) return;                                // no audio configured — player stays hidden
     const CREDIT = EX.sound_credit || {};
+    // EX-SOUND-TRACKS (his word 2026-09-10 21:14): more than one track walks beside the guest.
+    // `sound_tracks` in the settings record lists them ({url, title, artist}); one track alone
+    // loops as it always did, a list plays through and wraps, a control in the tray skips ahead,
+    // and the track a visitor left on is the one a return finds (remembered beside the volume).
+    const LIST = Array.isArray(EX.sound_tracks) ? EX.sound_tracks.filter((t) => t && t.url) : [];
+    const TRACKS = LIST.length ? LIST : [{ url: SND_URL, title: CREDIT.title || "", artist: CREDIT.artist || "" }];
+    let at = 0;
     const FADE_IN = 0.7, FADE_OUT = 0.8, DEFAULT_VOL = 0.3;
 
     const box = document.createElement("div");
@@ -11083,14 +11091,17 @@
     const SNDT = (greetLang() || { t: {} }).t;
     // the tray sits to the LEFT of the button (slides out on hover / while playing / focus-within);
     // the credit uses config-driven artist/title/url — never hardcoded content (INV-1)
-    const artistHtml = CREDIT.artist ? `<span class="t"><b>${CREDIT.artist}</b></span>` : "";
-    const titleHtml = CREDIT.title ? `<span class="t">«${CREDIT.title}»</span>` : "";
+    const artistHtml = `<span class="t exsnd-artist"><b></b></span>`;
+    const titleHtml = `<span class="t exsnd-title"></span>`;
     const linkHtml = CREDIT.url
       ? `<a href="${CREDIT.url}" target="_blank" rel="noopener">${CREDIT.url.replace(/^https?:\/\//, "")}</a>`
       : "";
     box.innerHTML =
       '<div class="exsnd-tray">' +
         '<span class="exsnd-cred">' + artistHtml + titleHtml + linkHtml + '</span>' +
+        (TRACKS.length > 1
+          ? '<button class="exsnd-next" type="button" aria-label="' + (SNDT.a11y_next_track || A11Y_NEXT_TRACK_EN) + '">›</button>'
+          : "") +
         // EX-CALM (S-33 variant C): the calm switch, riding the SAME tray as sound rather than a
         // fifth pinned corner (variant A's cost, declined) — see 01a-pass.js's passCalmGet/Set.
         '<button class="exsnd-calm" type="button" aria-pressed="false"></button>' +
@@ -11111,6 +11122,13 @@
 
     const btn = box.querySelector(".exsnd-btn");
     const vol = box.querySelector(".exsnd-vol");
+    const credArtist = box.querySelector(".exsnd-artist"), credTitle = box.querySelector(".exsnd-title");
+    function showCredit() {
+      const t = TRACKS[at] || {};
+      const artist = t.artist || CREDIT.artist || "", title = t.title || "";
+      credArtist.hidden = !artist; credArtist.firstChild.textContent = artist;
+      credTitle.hidden = !title; credTitle.textContent = title ? "«" + title + "»" : "";
+    }
 
     // EX-CALM (S-33 variant C): reads/writes the SAME rung `?pass=visualLayer:off` already writes
     // (01a-pass.js), so no second road exists anywhere `visualLayer` is checked. A flip takes effect
@@ -11142,11 +11160,13 @@
     try { pref = JSON.parse(localStorage.getItem(SND_KEY) || "null"); } catch (e) {}
     if (!pref || pref.v !== VER) pref = null;
     if (pref && Number.isFinite(+pref.vol)) target = Math.min(1, Math.max(0, +pref.vol));
+    if (pref && Number.isInteger(+pref.track) && +pref.track >= 0 && +pref.track < TRACKS.length) at = +pref.track;
     vol.value = String(target);
+    showCredit();
 
     function persist() {
       try {
-        localStorage.setItem(SND_KEY, JSON.stringify({ v: VER, on: desired, vol: target, greeted: greeted }));
+        localStorage.setItem(SND_KEY, JSON.stringify({ v: VER, on: desired, vol: target, greeted: greeted, track: at }));
       } catch (e) {}
     }
 
@@ -11221,8 +11241,9 @@
       loading = true;
       try {
         aud = document.createElement("audio");
-        aud.src = SND_URL;
-        aud.loop = true;                                 // native loop — a faint seam at the wrap
+        aud.src = TRACKS[at].url;
+        if (TRACKS.length === 1) aud.loop = true;        // native loop — a faint seam at the wrap
+        else aud.addEventListener("ended", () => next(true));   // a list plays through and wraps
         aud.preload = "none";                            // stream on play, never a cold-load fetch
         // NO crossOrigin: the audio is same-origin, and a MediaElementSource over a CORS request the
         // static host does not answer (Cloudflare Pages sends no ACAO on static assets) would taint
@@ -11368,6 +11389,19 @@
       box.classList.remove("loading");   // a file error / off during buffer clears the loading note
     }
 
+    // the next track: the credit turns, the element takes the new file, and a running player goes
+    // on running — the gain stays where it stood, so the change is a cut, never a second fade-in
+    function next(auto) {
+      at = (at + 1) % TRACKS.length;
+      showCredit();
+      persist();
+      if (!aud) return;
+      aud.src = TRACKS[at].url;
+      if (playing || auto) { try { aud.play().catch(() => {}); } catch (e) {} }
+    }
+    const nextBtn = box.querySelector(".exsnd-next");
+    if (nextBtn) nextBtn.addEventListener("click", () => { next(false); });
+
     btn.addEventListener("click", () => { setDesired(!desired); });
     vol.addEventListener("input", () => {
       target = Math.min(1, Math.max(0, parseFloat(vol.value) || 0));
@@ -11390,8 +11424,9 @@
     // the player's own reachable surface, for the suite
     try {
       window.@@NS_UPPER@@Sound = { state: () => ({ desired, playing, armed, ready, loading,
-                                         currentTime: aud ? aud.currentTime : 0 }),
-                         url: SND_URL };
+                                         currentTime: aud ? aud.currentTime : 0, track: at,
+                                         tracks: TRACKS.length }),
+                         url: SND_URL, next: () => next(false) };
     } catch (e) {}
   })();
 /*!99-close.js*/

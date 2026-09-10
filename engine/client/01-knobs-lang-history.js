@@ -62,6 +62,7 @@
   const UNTITLED_EN = "untitled";
   const A11Y_CLOSE_EN = "close";
   const A11Y_VOLUME_EN = "volume";
+  const A11Y_NEXT_TRACK_EN = "next track";
   const A11Y_SOUND_EN = "sound";
   // N7-A11Y (INV-102): accessible names for the four modal layers + the walk frame's roledescription;
   // each localizes through EX-I18N (T.a11y_*), the fallback ENGLISH (source tongue), never a locale literal

@@ -1484,6 +1484,9 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
         # sound_url / sound_credit ride site.json (EX-NS-style instance identity): the engine's own
         # example ships neither (player OFF), an instance opts in by declaring them in site.json.
         "sound_url": (site_config.get("sound_url") or ""),   # path to the .m4a / .ogg — empty means no player renders
+        # EX-SOUND-TRACKS: more than one track, {url, title, artist} each; the client plays the
+        # list through and offers the next one in the tray. Empty means the one sound_url loops.
+        "sound_tracks": [t for t in (site_config.get("sound_tracks") or []) if isinstance(t, dict) and t.get("url")],
         "sound_credit": (site_config.get("sound_credit") or {  # the tray's attribution — instance fills its own in site.json
             "artist": "",          # artist/band name (shown bold)
             "title": "",           # track/album title (shown in «»)
@@ -1507,6 +1510,8 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     if not ex_cfg.get("sound_url"):
         ex_cfg.pop("sound_url", None)
         ex_cfg.pop("sound_credit", None)
+    if not ex_cfg.get("sound_tracks"):
+        ex_cfg.pop("sound_tracks", None)
     if ex_cfg.get("quiz") == {"placement": ["plaque"]}:
         del ex_cfg["quiz"]
     # site_name exists for the ENGINE client's door wordmark (INV-28); an instance that ships
