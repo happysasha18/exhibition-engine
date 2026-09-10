@@ -114,21 +114,26 @@ for L, html in PAGES.items():
 check("AB2 INV-102 every visible sentence comes from the copy dictionary",
       REACH and not bad, "; ".join(bad[:4]) or REACH_NOTE)
 
-# ---------------------------------------------------------------- AB3 no photograph, no share picture
+# ---------------------------------------------------------------- AB3 no photograph on the page, the root's share picture behind the link
+# His word 2026-09-10: every page unfurls with a picture; a page that is not a work unfurls with
+# the root's own. The page itself stays prose — no <img> stands on it.
 bad = []
+root_og = meta_content(INDEX, "property", "og:image")
 for L, html in PAGES.items():
     body = html.split("<body", 1)[-1]
     if tags(body, "img"):
         bad.append(f"{L}: an <img> stands on a page of prose")
-    for prop in ("og:image", "og:image:alt"):
-        if f'property="{prop}"' in html:
-            bad.append(f"{L}: {prop} emitted with no picture behind it")
-    if 'name="twitter:image"' in html:
-        bad.append(f"{L}: twitter:image emitted with no picture")
+    og = meta_content(html, "property", "og:image")
+    if not og or not og.startswith("http"):
+        bad.append(f"{L}: og:image absent or relative ({og!r})")
+    elif root_og and og != root_og:
+        bad.append(f"{L}: og:image {og!r} is not the root's {root_og!r}")
+    if meta_content(html, "name", "twitter:image") != og:
+        bad.append(f"{L}: twitter:image does not match og:image")
     card = meta_content(html, "name", "twitter:card")
-    if card != "summary":
-        bad.append(f"{L}: twitter:card={card!r}, want 'summary' (large-image with no image unfurls broken)")
-check("AB3 INV-102 no photograph and no share picture",
+    if card != "summary_large_image":
+        bad.append(f"{L}: twitter:card={card!r}, want 'summary_large_image'")
+check("AB3 INV-102 no photograph on the page, the root's share picture behind the link",
       REACH and not bad, "; ".join(bad[:4]) or REACH_NOTE)
 
 # ---------------------------------------------------------------- AB4 the sibling set is mutual

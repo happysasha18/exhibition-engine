@@ -510,7 +510,7 @@ def about_langs(greet):
     return [L for L, blk in langs.items() if (blk.get("about_title") or "").strip()]
 
 
-def render_about(site_url, about, lang, langs, fallback, direction=""):
+def render_about(site_url, about, lang, langs, fallback, direction="", og_image=""):
     """The about page (EX-ABOUT / INV-102): one flat page that stands OUTSIDE the exhibition and
     says what it is. The rooms never explain — the threshold asks wordlessly and every room
     answers by behaving — so the account of the exhibition lives here, in the site's own service
@@ -566,7 +566,9 @@ def render_about(site_url, about, lang, langs, fallback, direction=""):
 </body>
 </html>
 """
-    return head(title, desc, canonical, "", "article", jsonld,
+    # The share picture is the root's own hero (his word 2026-09-10: every page unfurls with a
+    # picture, the root's one for the pages that are not a work). The page itself stays prose.
+    return head(title, desc, canonical, og_image, "article", jsonld,
                 extra_og=alts, extra_head='<meta name="robots" content="index,follow">\n',
                 lang=lang, direction=direction) + body
 
@@ -1279,11 +1281,13 @@ def build(site_url, ga_id="", enable=None, content_dir=None, out_dir=None,
     # the about page (EX-ABOUT / INV-102): one flat page per tongue that HAS copy, the fallback at
     # the bare `/about`. No copy in the fallback tongue ⇒ about_set is empty ⇒ nothing here runs
     # and the bundle is byte-identical to a bake without the feature.
+    about_hero = pick_hero(items, OG_IMAGE_ID)            # the same pick the root unfurls with
+    about_og = f"{site_url}/gallery/{about_hero['img']}" if about_hero else ""
     for lang in about_set:
         blk = greet["langs"][lang]
         write(OUT / f"{about_path(lang, greet['fallback'])}.html",
               render_about(site_url, blk, lang, about_set, greet["fallback"],
-                           direction="rtl" if blk.get("dir") == "rtl" else ""))
+                           direction="rtl" if blk.get("dir") == "rtl" else "", og_image=about_og))
 
     copy_exhibition_assets()
 
