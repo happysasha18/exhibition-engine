@@ -11417,7 +11417,8 @@
     }
     function next(auto) { pick(at + 1, auto); }
     if (list) {
-      const openList = (on) => { list.hidden = !on; credTitle.setAttribute("aria-expanded", on ? "true" : "false"); };
+      // an open list stands over everything in that corner, the darkroom's door included
+      const openList = (on) => { list.hidden = !on; box.classList.toggle("listing", on); credTitle.setAttribute("aria-expanded", on ? "true" : "false"); };
       credTitle.addEventListener("click", () => openList(list.hidden));
       list.addEventListener("click", (e) => {
         const o = e.target.closest("[role=option]"); if (!o) return;

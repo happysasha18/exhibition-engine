@@ -692,6 +692,7 @@ body.ex-crossing .exh-counter.loading{ opacity:1 !important; }   /* beats the cr
   color:var(--muted); font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-align:end; cursor:pointer;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .exsnd-list [role=option][aria-selected="true"]{ color:var(--accent); }
+#ex-sound.listing{ z-index:1000; }
 .exsnd-list [role=option]:focus-visible{ color:var(--ink); outline:1px solid var(--muted-2); }
 @media (hover:hover){ .exsnd-list [role=option]:hover{ color:var(--ink); background:rgba(255,255,255,.04); } }
 /* the volume slider — ≥44px touch target, thin visible track */
