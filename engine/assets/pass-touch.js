@@ -617,6 +617,7 @@
       var pose = getComputedStyle(img);
       cs.transform = pose.transform;
       cs.transformOrigin = pose.transformOrigin;
+      cs.translate = pose.translate;   // the tilt's slide (08b-standing.js) rides the same way
     } catch (e) {}
   }
 

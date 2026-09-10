@@ -63,6 +63,7 @@ ROWS = [
     "drawn and reports its loop not running",
     "EX-STANDING row3 the stand-down survives a scroll: paging through several works in turn "
     "leaves every one of them without a scale the whole way, seated or not",
+    "EX-TILT row4 on a phone, a tilt slides the standing work on a mass and it comes home when the phone levels",
 ]
 
 if not chrome_available():
@@ -153,6 +154,34 @@ else:
                       seen_nonempty is None and rep_after["drawing"] is None
                       and rep_after["running"] is False,
                       f"non-empty scale mid-scroll: {seen_nonempty!r}; report: {rep_after!r}")
+            # ------------------------------------------------ row 4: the tilt of the phone, the slide
+            with Browser(width=PHONE[0], height=PHONE[1]) as br:
+                br.set_viewport(PHONE[0], PHONE[1], mobile=True)
+                br.touch(True)                       # a phone's own pointer is coarse: the tilt arms on one
+                room(br, base)
+                wait_for(br, "!!(window.__exPass && window.__exPass.standing)")
+                br.sleep(0.5)
+                tilt = lambda b, g: br.evaluate(
+                    "window.dispatchEvent(new DeviceOrientationEvent('deviceorientation',"
+                    "{alpha:0,beta:%s,gamma:%s})),1" % (b, g))
+                tilt(40, 0)               # where the phone is held: the zero
+                br.sleep(0.3)
+                tilt(40, 18)              # tipped a full tilt to the right
+                br.sleep(1.8)
+                rep = standing(br)["tilt"]
+                w = br.evaluate("(function(){var f=document.querySelector('.exh-frame img.work');return f?f.getBoundingClientRect().width:0})()")
+                slid = rep["translate"] or ""
+                x = float(slid.split("px")[0]) if slid else 0.0
+                tilt(40, 0)               # levelled again
+                br.sleep(2.2)
+                rep2 = standing(br)["tilt"]
+                print("tilt report tipped: %r; levelled: %r; first work width %s" % (rep, rep2, w))
+                check(ROWS[3],
+                      rep["armed"] and rep["on"] and rep["drawing"] is not None
+                      and w > 0 and abs(x - w * rep["law"]["reachOfWidth"]) < w * 0.01
+                      and abs(rep2["at"]["x"]) < 0.01
+                      and (not rep2["translate"] or abs(float(rep2["translate"].split("px")[0])) < w * 0.002),
+                      f"tipped translate={slid!r} against a reach of {w * 0.04:.1f}px; levelled: {rep2!r}")
     finally:
         import shutil
         shutil.rmtree(TMP, ignore_errors=True)

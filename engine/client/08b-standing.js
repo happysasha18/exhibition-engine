@@ -145,8 +145,127 @@
     if (drew) standWake();
   }
   function standWake() {
+    tiltArm();
     if (standRaf !== null || typeof requestAnimationFrame !== "function") return;
     standRaf = requestAnimationFrame(standTick);
+  }
+
+  // ---- EX-TILT: the standing work slides with the tilt of the phone (his word 2026-09-10 18:42) ---
+  // A picture at rest on a phone that nobody is touching answers the phone's own tilt: tipped left,
+  // it slides a little left; tipped forward, a little down; and it does so on a mass, so it creeps
+  // after the hand and settles rather than snapping. This is not the ambient breath the owner
+  // retired on 2026-09-06 — nothing moves unless the visitor moves the phone.
+  //
+  // WHAT IT WRITES. The standalone `translate` property on the one picture the conductor seated —
+  // the same element `standDraw` above wrote its `scale` on, for the same reason: the computed
+  // `transform` the hang reads (`hangGeometry`) and the hand layer's own `transform` (pass-hand.js
+  // `paint`) both stay untouched, so the three never overwrite each other. The touch overlay
+  // (pass-touch.js) carries the picture's `translate` the way it already carries its `transform`.
+  //
+  // THE HAND WINS. While a finger is on the work the slide eases home and stays there: under the
+  // hand the picture answers the hand (pass-hand.js), and two movements at once is a picture that
+  // answers neither.
+  //
+  // THE ASK. Safari on iOS hands out the tilt only after the visitor says yes, and only asks inside
+  // a tap. So on such a phone the ask rides the first tap on a work of the walk — the dialog is the
+  // browser's own — and is made once per page; a no is remembered for the session, never nagged.
+  // Elsewhere the events either flow without an ask (Android) or never come (a desk), and nothing
+  // is asked or armed on a fine pointer at all.
+  const TILT_REACH = 0.04;   // at full tilt the picture has slid 4 % of its own width
+  const TILT_FULL = 18;      // the tilt, in degrees off where the phone was, that counts as full
+  const TILT_K = 10;         // the spring's stiffness ...
+  const TILT_D = 5.5;        // ... and its damping: the slide creeps and settles in about a second
+  let tiltArmed = false, tiltOn = false, tiltZero = null, tiltListening = false;
+  const tiltTarget = { x: 0, y: 0 }, tiltPos = { x: 0, y: 0 }, tiltVel = { x: 0, y: 0 };
+  let tiltEl = null, tiltRaf = null, tiltAt = 0, tiltHand = false;
+
+  function tiltCoarse() {
+    try { return matchMedia("(pointer: coarse)").matches; } catch (e) { return false; }
+  }
+  function tiltRead(e) {
+    if (e.gamma == null || e.beta == null) return;
+    if (!tiltZero) tiltZero = { b: e.beta, g: e.gamma };
+    let x = (e.gamma - tiltZero.g) / TILT_FULL, y = (e.beta - tiltZero.b) / TILT_FULL;
+    // a phone turned on its side reads its axes turned with it
+    let angle = 0;
+    try { angle = (screen.orientation && screen.orientation.angle) || 0; } catch (err) { angle = 0; }
+    if (angle === 90) { const t = x; x = -y; y = t; }
+    else if (angle === 270 || angle === -90) { const t = x; x = y; y = -t; }
+    tiltTarget.x = Math.max(-1, Math.min(1, x));
+    tiltTarget.y = Math.max(-1, Math.min(1, y));
+    tiltOn = true;
+    tiltWake();
+  }
+  function tiltListen() {
+    if (tiltListening) return;
+    tiltListening = true;
+    addEventListener("deviceorientation", tiltRead);
+  }
+  function tiltAsk(e) {
+    const img = e.target && e.target.closest ? e.target.closest(".exh-frame img.work") : null;
+    if (!img) return;
+    removeEventListener("pointerup", tiltAsk, true);
+    try {
+      if (sessionStorage.getItem("ex-tilt") === "no") return;
+      DeviceOrientationEvent.requestPermission().then((r) => {
+        if (r === "granted") tiltListen();
+        else try { sessionStorage.setItem("ex-tilt", "no"); } catch (err) {}
+      }).catch(() => {});
+    } catch (err) {}
+  }
+  function tiltArm() {
+    if (tiltArmed) return;
+    tiltArmed = true;
+    if (!tiltCoarse() || typeof DeviceOrientationEvent === "undefined") return;
+    // the hand: the slide goes home while a finger is on a work, and comes back when it lifts
+    addEventListener("pointerdown", (e) => {
+      if (e.target && e.target.closest && e.target.closest(".exh-frame img.work")) { tiltHand = true; tiltWake(); }
+    }, true);
+    const lift = () => { if (tiltHand) { tiltHand = false; tiltWake(); } };
+    addEventListener("pointerup", lift, true);
+    addEventListener("pointercancel", lift, true);
+    if (typeof DeviceOrientationEvent.requestPermission === "function") addEventListener("pointerup", tiltAsk, true);
+    else tiltListen();
+  }
+  function tiltClear() {
+    if (tiltEl) { try { tiltEl.style.translate = ""; } catch (e) {} }
+    tiltEl = null; tiltPos.x = tiltPos.y = tiltVel.x = tiltVel.y = 0;
+  }
+  function tiltTick() {
+    tiltRaf = null;
+    const t = performance.now();
+    const dt = Math.min(0.05, tiltAt ? (t - tiltAt) / 1000 : 0);
+    tiltAt = t;
+    let id = null;
+    try { id = conductorVoiced(); } catch (e) { id = null; }
+    const frame = id != null ? condFrameOf(id) : null;
+    const el = (frame && frame.querySelector) ? frame.querySelector("img.work") : null;
+    if (el !== tiltEl) { tiltClear(); tiltEl = el; }
+    if (!tiltEl || !document.body.contains(tiltEl)) { tiltClear(); tiltAt = 0; return; }
+    const home = tiltHand || !tiltOn;
+    const tx = home ? 0 : tiltTarget.x, ty = home ? 0 : tiltTarget.y;
+    // a mass on a spring, towards where the tilt points
+    tiltVel.x += ((tx - tiltPos.x) * TILT_K - tiltVel.x * TILT_D) * dt;
+    tiltVel.y += ((ty - tiltPos.y) * TILT_K - tiltVel.y * TILT_D) * dt;
+    tiltPos.x += tiltVel.x * dt;
+    tiltPos.y += tiltVel.y * dt;
+    const w = tiltEl.getBoundingClientRect().width;
+    const reach = w * TILT_REACH;
+    tiltEl.style.translate = (tiltPos.x * reach).toFixed(2) + "px " + (tiltPos.y * reach).toFixed(2) + "px";
+    const moving = Math.abs(tx - tiltPos.x) > 0.002 || Math.abs(ty - tiltPos.y) > 0.002
+                || Math.abs(tiltVel.x) > 0.002 || Math.abs(tiltVel.y) > 0.002;
+    if (moving) tiltWake();
+    else { tiltAt = 0; if (home) tiltClear(); }
+  }
+  function tiltWake() {
+    if (tiltRaf !== null || typeof requestAnimationFrame !== "function") return;
+    tiltRaf = requestAnimationFrame(tiltTick);
+  }
+  function tiltReport() {
+    return { armed: tiltArmed, listening: tiltListening, coarse: tiltCoarse(), on: tiltOn, hand: tiltHand, drawing: tiltEl ? (condIdOf(tiltEl.closest(".exh-frame")) || null) : null,
+             target: { x: tiltTarget.x, y: tiltTarget.y }, at: { x: tiltPos.x, y: tiltPos.y },
+             translate: tiltEl ? (tiltEl.style.translate || null) : null,
+             law: { reachOfWidth: TILT_REACH, fullDegrees: TILT_FULL, k: TILT_K, d: TILT_D } };
   }
 
   // The report, on the diagnostic surface beside the conductor's (01a-pass.js): which work is being
@@ -164,5 +283,6 @@
       law: { stillOfFrameWidth: STAND_STILL, capOfTravel: STAND_CAP, breathOfTravel: STAND_BREATH,
              amplitudeOfFrameWidth: STAND_AMPLITUDE },
       running: standRaf !== null,
+      tilt: tiltReport(),
     };
   }
