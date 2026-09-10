@@ -694,7 +694,15 @@ body.ex-crossing .exh-counter.loading{ opacity:1 !important; }   /* beats the cr
 .exsnd-list [role=option]{ min-height:44px; padding:0 14px; border:0; border-radius:8px; background:transparent;
   color:var(--muted); font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-align:end; cursor:pointer;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.exsnd-list [role=option][aria-selected="true"]{ color:var(--accent); }
+.exsnd-list [role=option][aria-selected="true"]{ color:var(--ink); }
+.exsnd-list [role=option][aria-selected="true"]::after{ content:" ●"; color:var(--accent); }
+/* a phone's tray carries the title alone: the artist line and the link would push the tray over
+   the counter in the far corner (2026-09-10 21:53) */
+@media (max-width:559px){
+  .exsnd-cred .exsnd-artist, .exsnd-cred a{ display:none; }
+  #ex-sound.playing .exsnd-tray, #ex-sound:focus-within .exsnd-tray{ max-width:min(300px, 60vw); }
+  .exsnd-list{ max-width:min(300px, 80vw); }
+}
 #ex-sound.listing{ z-index:1000; }
 .exsnd-list [role=option]:focus-visible{ color:var(--ink); outline:1px solid var(--muted-2); }
 @media (hover:hover){ .exsnd-list [role=option]:hover{ color:var(--ink); background:rgba(255,255,255,.04); } }
