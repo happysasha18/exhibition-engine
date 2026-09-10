@@ -485,9 +485,16 @@
     // `mix` too, at the SAME amp the breath already plays there, gated to zero while `lean` is
     // engaged so a press keeps summing exactly `lean.value + breathValue` as it always has. A
     // hover now reads ~0.027, about half the press reach, through this file's own attend/lean verbs.
-    var hoverMix = lean.engaged ? 0 : attend.x * amp;
+    // His word 2026-09-10 20:45: the mouse should change the work a little, the way a touch does
+    // on a phone. A hover rode the breath's own thirty-second, which painted 0.014 of the frame's
+    // width at the far edge — under what the hand can feel (row 19's floor of 0.02). It now rides
+    // half the lean's own eighth on both axes: a hover reaches half of what a press reaches, on
+    // the same two letters the press moves, and the press keeps summing exactly as it did.
+    var hoverAmp = lean.engaged ? 0 : leanCap() / 2;
+    var hoverTilt = handSpan("tilt") / 16;
+    var hoverMix = attend.x * hoverAmp;
     return { mix: clamp(lean.value + hoverMix + breathValue(t), -capMix, capMix),
-             tilt: clamp(attend.y * amp + ringValue(t), -capTilt, capTilt) };
+             tilt: clamp(attend.y * hoverTilt + ringValue(t), -capTilt, capTilt) };
   }
 
   // ---- the sink: the reading, written onto the picture the hand stands on ------------------------
