@@ -685,6 +685,9 @@ body.ex-crossing .exh-counter.loading{ opacity:1 !important; }   /* beats the cr
 .exsnd-pick::after{ content:" ▾"; color:var(--faint); }
 .exsnd-pick:focus-visible, .exsnd-pick[aria-expanded="true"]{ color:var(--ink); }
 @media (hover:hover){ .exsnd-pick:hover{ color:var(--ink); } }
+/* `hidden` is an attribute, and an author `display` outranks the browser's own `display:none` for
+   it — so the closed list is closed here, in as many words, or it is never closed at all */
+.exsnd-list[hidden]{ display:none; }
 .exsnd-list{ position:absolute; inset-inline-end:0; top:calc(100% + 8px); display:flex; flex-direction:column;
   min-width:200px; max-width:min(320px, 86vw); padding:6px; border:1px solid var(--hair); border-radius:12px;
   background:color-mix(in srgb, var(--bg-deep) 92%, transparent); backdrop-filter:blur(10px); z-index:2; }
