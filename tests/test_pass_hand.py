@@ -108,8 +108,8 @@ ROWS = [
     "and never typed in",
     "EX-HAND row8 Requirement 38 c1 both input kinds: twelve driven gestures (six mouse, six touch) "
     "each print the verb that fired, and all six verb names appear under each input kind",
-    "EX-HAND row9 Requirement 38 c1 arrive: it fires on pointer entry, and the breath's phase after "
-    "it differs from the phase before it",
+    "EX-HAND row9 Requirement 38 c1 arrive: it fires on pointer entry without restarting the "
+    "ambient breath's phase",
     "EX-HAND row10 Requirement 38 c1 attend: the matter's free point moves toward the hand under an "
     "unpressed hover move and under a drag alike",
     "EX-HAND row11 Requirement 38 c1 lean: total travel on mix never exceeds R/8, one direction "
@@ -436,21 +436,27 @@ else:
               set(mouse_log) == SIX_VERBS and set(touch_log) == SIX_VERBS,
               f"mouse={mouse_log} touch={touch_log}")
 
-        # row 9 — arrive: fires on pointer entry, and resets the breath's phase
+        # row 9 — arrive: fires on pointer entry, but never re-clocks the ambient breath.  The
+        # phase advances by the ordinary wall-clock amount across a second arrival; it must not
+        # jump back to phase zero, which was the visible restart on a re-attach.
         with Browser(width=1280, height=900) as br:
             br.touch(True, 2)
             room(br, base)
             wait_for(br, HAND_READY)
             fire(br, WORK, "pointerover", "mouse", 0.5, 0.5, 41)
             arrived1 = wait_for(br, verb_expr("arrive"))
-            br.sleep(1.0)   # let the phase move well away from its just-reset value
+            br.sleep(1.0)   # let the phase move well away from its initial position
             before = hand_report(br)["breath"]["phase"]
             fire(br, WORK, "pointerover", "mouse", 0.5, 0.5, 42)
             arrived2 = wait_for(br, verb_expr("arrive"))
             after = hand_report(br)["breath"]["phase"]
+            # An immediate second arrival takes at most a small fraction of an 8-second period;
+            # a reset used to land it near zero instead.  Read the circular distance so this also
+            # remains true when the natural curve happens to cross its 1→0 seam.
+            drift = abs(((after - before + 0.5) % 1) - 0.5)
             check(ROWS[8],
-                  bool(arrived1) and bool(arrived2) and abs(after - before) > 0.01,
-                  f"arrived1={arrived1} arrived2={arrived2} phase_before={before} phase_after={after}")
+                  bool(arrived1) and bool(arrived2) and drift < 0.08,
+                  f"arrived1={arrived1} arrived2={arrived2} phase_before={before} phase_after={after} drift={drift}")
 
         # row 10 — attend: the free point moves toward the hand, hover and drag alike
         with Browser(width=1280, height=900) as br:

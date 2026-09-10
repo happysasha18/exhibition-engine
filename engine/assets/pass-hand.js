@@ -151,10 +151,11 @@
   // IT RUNS AT REST, WITH NO HAND ANYWHERE (Requirement 37's own title, "standing life at rest",
   // and criterion 13, "micro-motion shall survive every state"). The phase is a pure function of
   // wall time and of the last arrival, so it needs no loop of its own to keep going and it is
-  // running before the first pointer event ever lands. `resetPhase` greets a hand, `setGain` dims
-  // the voice under a held press, and neither of them starts it.
+  // running before the first pointer event ever lands. Arrival does not re-clock it: a picture may
+  // be attached again when an overlay clears or a pointer crosses its surface, and restarting the
+  // eight-second curve there reads as a visible jerk rather than a living response. `setGain` dims
+  // the voice under a held press, and neither starts or re-clocks it.
   var breath = { t0: 0, gain: 1 };
-  function resetPhase() { breath.t0 = now(); }     // arrive uses this
   function setGain(g) { breath.gain = clamp(+g || 0, 0, 1); }  // hold uses this
   // The residual quarter-breath, Requirement 38 criterion 1's own hold verb — "self-life dims to a
   // residual quarter-breath". Named once here and read twice: by `hold` below, and by the seat, for
@@ -296,7 +297,8 @@
   }
 
   function doArrive() {
-    resetPhase();
+    // Arrival is an interaction verb, not the beginning of a new ambient loop.  Keeping the one
+    // wall-clock phase is what makes a re-attach and a finger arriving mid-cycle feel continuous.
     fireVerb("arrive");
   }
 
@@ -644,7 +646,7 @@
   // breath's curve at its own two gains, which is everything a renderer needs from this file.
   function unit() { return breathUnit(now()); }
 
-  join({ attach: attach, detach: detach, report: report, resetPhase: resetPhase, setGain: setGain,
+  join({ attach: attach, detach: detach, report: report, setGain: setGain,
          host: host, handleSpan: passHandleSpan, ringFreq: ringFreq, ringRow: ringRow,
          residual: RESIDUAL,
          voice: voice, unit: unit, clockCurve: clockCurve, clockProfile: clockProfile });
