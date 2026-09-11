@@ -585,6 +585,12 @@
       attached: attached,
       verb: lastVerb,
       kind: kind,
+      // WHETHER A HAND IS ON THE WORK RIGHT NOW (2026-09-11, read by the standing life): a hover
+      // standing on the picture, or an engaged pointer. `attached` alone is the walk's bookkeeping —
+      // it attaches at every dock with nobody touching — and `verb` is the last thing that happened,
+      // not what is happening.
+      over: !!overWork,
+      pressed: pointerId !== null,
       // THE VOICE. Its own block, named for the letter it rides. The five keys U3 published under
       // `tilt` keep their names here: they were always the voice's own.
       breath: {

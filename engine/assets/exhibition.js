@@ -7350,26 +7350,109 @@
   }
 
   // Answers whether a breath was actually written, which is what the loop below runs on.
-  function standDraw() {
-    // OWNER'S WORD, 2026-09-06: a work that moves while nobody is touching it is excess, and the
-    // motion belongs under the hand instead (`pass-hand.js`'s own `paint()`, which this stand-down
-    // never touches — the breath it rides, `breathUnit`, is unchanged). Standing off unconditionally
-    // — `standClear()` takes whatever `scale` a picture still carries back off it, and returning
-    // `false` is `standTick` below's own signal to stop re-arming, so the loop goes back to sleep
-    // for good rather than drawing nothing forever. The rest of this function is kept rather than
-    // deleted — a later "bring the ambient breath back" has a real body to re-enable, not a rewrite
-    // from nothing — but nothing below this line runs any more.
-    standClear();
-    return false;
-    const id = conductorVoiced();
-    if (id == null) { standClear(); return false; }
-    if (id !== standId || standViewport() !== standAt || !document.body.contains(standEl)) {
-      if (!standTake(id)) return false;
-    }
-    const swell = (1 + standUnit()) / 2;      // the voice's own curve, ridden out of the hang alone
-    standEl.style.scale = String(1 + swell * standAmp / standReach);
+  // ---- THE STANDING WORK ANSWERS THE HAND ON ITS OWN LETTER (2026-09-11, his word: «в стоячем
+  // положении можно больше эффектов из имеющихся задействовать», held together with his word of
+  // 2026-09-06 above: motion belongs under the hand). Nothing moves while nobody touches. The
+  // moment the hand stands on a work — a hover, a finger — the composer is asked for that work's
+  // crossing WITH ITSELF (one pivot cue on the instrument its own structure cuts on), and the
+  // drawing layer holds that crossing as a «stand» (pass-layer.js: no watchdog, the frame clipped
+  // to the work's own box, cut at once by any real crossing), its clock pinned every frame to what
+  // the hand says, in lab/STANDING-LIFE-DRAFT.md shelf 20's own band: under a resting hand the
+  // voice's breath (`passHand.unit`, period eight seconds) through the first thirty-second of the
+  // pass — criterion 1's R/32, R the letter's full crossing travel; under an engaged drag the
+  // hand's own lean, read off the hand's report against the cap the hand already holds it to,
+  // criterion 1 of Requirement 38's R/8, on top of the breath. So the work moves exactly as its
+  // own crossing would begin, and no further than an eighth of it, and it rests again when the
+  // hand leaves. Every number is the requirement's or the composer's; nothing scales with the
+  // collection — one request, for the one work under the hand, when the hand arrives.
+  const STAND_SHARE = 1 / STAND_BREATH;     // R/32 — the breath's share of the letter's travel
+  const STAND_LEAN = 1 / 8;                  // R/8  — the lean's cap, Requirement 38 criterion 1
+  let standCmd = null;                       // {id, gen, duration} of the running stand
+  let standN = 0;                            // stands are numbered below zero: never a crossing's gen
+
+  function standLayerReport() {
+    try { return passLayer && typeof passLayer.report === "function" ? passLayer.report() : null; } catch (e) { return null; }
+  }
+  function standHand() {
+    try { return passHand && typeof passHand.report === "function" ? passHand.report() : null; } catch (e) { return null; }
+  }
+  function standEnd(why) {
+    if (!standCmd) return;
+    standCmd = null;
+    try { passLayer.configure({ clockPin: null, progressPin: null }); } catch (e) {}
+    try { passLayer.cancel("stand: " + why, true); } catch (e) {}
+  }
+  function standOffer(id) {
+    const frame = condFrameOf(id);
+    if (!frame || !passComposer || !passLayer) return false;
+    let req = null, made = null;
+    try { req = passRequestFor(frame, frame); } catch (e) { req = null; }
+    if (!req) return false;
+    try { made = passComposer.passageFor(req); } catch (e) { made = null; }
+    const score = made && !made.declined ? made.score : null;
+    if (!score) return false;
+    const gen = -(++standN);
+    const cmd = Object.freeze({
+      gen: gen, from: { id: String(id), n: 1 }, to: { id: String(id), n: 1 },
+      dir: 1, span: 0, kind: "stand", cause: "stand", velocity: 0,
+      reduced: !!REDUCED, saveData: !!dataSaver(),
+      rtl: (document.documentElement.getAttribute("dir") === "rtl"),
+      dpr: window.devicePixelRatio || 1,
+      viewport: Object.freeze({ w: innerWidth, h: innerHeight }),
+      params: passSnapshot(score), score: score,
+      signal: Object.freeze({ get aborted() { return !standCmd || standCmd.gen !== gen; } }),
+    });
+    let took = false;
+    try {
+      passLayer.configure({ clockPin: 0, progressPin: 0 });
+      took = passLayer.offer(cmd, {
+        dock: function () {}, glide: function () { if (standCmd && standCmd.gen === gen) standCmd = null; },
+        curtain: function () {}, mark: passMark, hangGeometry: hangGeometry, handoff: function () {},
+      }) === true;
+    } catch (e) { took = false; }
+    if (!took) { try { passLayer.configure({ clockPin: null, progressPin: null }); } catch (e) {} return false; }
+    standCmd = { id: String(id), gen: gen, duration: +score.duration || 0 };
     return true;
   }
+  function standDraw() {
+    standClear();                                   // the CSS swell stays off (his word of 2026-09-06)
+    const rep = standLayerReport(), hand = standHand();
+    if (!rep) { standCmd = null; return false; }
+    if (rep.active) { standCmd = null; return false; }          // a crossing owns the frame; a stand was cut with it
+    // THE HAND IS ON THE WORK: attached by the walk AND a hover standing on the picture or an
+    // engaged pointer (`over`/`pressed`, pass-hand.js's own report). The walk also attaches the hand
+    // at every dock with nobody touching, so attachment alone is not a hand.
+    const present = !!(hand && hand.attached != null && (hand.over || hand.pressed));
+    const id = present && conductorVoiced() != null ? String(hand.attached) : null;
+    const standGen = rep.stand ? rep.stand.gen : null;          // the stand the layer holds, by its own row
+    if (standCmd && standGen !== standCmd.gen) standCmd = null;  // ended elsewhere
+    if (id == null) {
+      if (standCmd) standEnd("the hand left");
+      else if (rep.standing) {                                   // a stand of this file's the record lost track of
+        try { passLayer.configure({ clockPin: null, progressPin: null }); passLayer.cancel("stand: the hand left", true); } catch (e) {}
+      }
+      return false;
+    }
+    if (standCmd && standCmd.id !== id) standEnd("the hand moved to another work");
+    if (!standCmd) {
+      if (rep.standing || rep.state === "awaiting") return true;   // its own stand still leaving, or an offer warming
+      return standOffer(id);
+    }
+    const breath = STAND_SHARE * (1 + standUnit()) / 2;         // out of the rest and back, never through it
+    const lean = hand.lean && hand.lean.cap > 0 ? STAND_LEAN * Math.min(1, Math.abs(+hand.lean.value || 0) / hand.lean.cap) : 0;
+    const at = Math.min(1, breath + lean);
+    try { passLayer.configure({ clockPin: at * standCmd.duration / 1000, progressPin: at }); } catch (e) {}
+    return true;
+  }
+  // The hand arriving on a work is the fourth thing that makes a work drawable (the three below
+  // are the hang, a work in view and a dock): the walk attaches the hand on these same events
+  // (01a-pass.js), so the loop is woken here on the same reach, passively, and goes back to sleep
+  // the moment the hand leaves and `standDraw` returns false.
+  ["pointerover", "pointerdown"].forEach((name) => {
+    addEventListener(name, (e) => {
+      if (e.target && e.target.closest && e.target.closest(".exh-frame img.work")) standWake();
+    }, { capture: true, passive: true });
+  });
 
   // ONE LOOP, AND ONLY WHILE A WORK IS ACTUALLY BEING DRAWN. It is requestAnimationFrame all the way
   // down, so a hidden tab is not drawing and this file is asleep with it, and it holds no timer and

@@ -249,9 +249,24 @@
     stageResize();
   }
 
+  // THE STAND SHOWS ONLY THE WORK'S OWN BOX. The frame element is the window, opaque under the
+  // picture; a crossing wants exactly that (the curtain). A standing life stands beside the page's
+  // own chrome, so the frame is clipped to the hang box the host measured — re-read every frame,
+  // since the box scrolls — and the clip is taken off with the stand.
+  function standClip(rec) {
+    if (!frameEl) return;
+    var g = null;
+    try { g = rec.hooks && rec.hooks.hangGeometry ? rec.hooks.hangGeometry(rec.cmd.from && rec.cmd.from.id) : null; } catch (e) { g = null; }
+    if (!g || !(g.w > 0) || !(g.h > 0)) { frameEl.style.clipPath = "inset(100%)"; return; }
+    var top = Math.max(0, g.y), left = Math.max(0, g.x);
+    var right = Math.max(0, cssW - (g.x + g.w)), bottom = Math.max(0, cssH - (g.y + g.h));
+    frameEl.style.clipPath = "inset(" + top.toFixed(2) + "px " + right.toFixed(2) + "px "
+                                       + bottom.toFixed(2) + "px " + left.toFixed(2) + "px)";
+  }
   function stageShow(on) {
     if (!stage) return;
     if (on) stageGen++;
+    if (!on && frameEl) frameEl.style.clipPath = "";
     stage.canvas.style.visibility = on ? "visible" : "hidden";
     if (frameEl) frameEl.style.visibility = on ? "visible" : "hidden";
     if (!on) {
@@ -3851,6 +3866,7 @@
     var seconds = pinClock !== null ? pinClock : (now - rec.t0) / 1000;
     var progress = pinProgress !== null ? pinProgress
       : (rec.duration > 0 ? Math.min(1, (now - rec.t0) / rec.duration) : 1);
+    if (rec.cmd.kind === "stand") standClip(rec);
     try {
       if (rec.cadence && !rec.cadence.ended) {
         // THE CADENCE OWNS THE CLOCK while it plays. The second and the progress are its own
@@ -4007,6 +4023,14 @@
   }
 
   function offerNow(cmd, hooks) {
+    // A STANDING LIFE GIVES WAY AT ONCE. A stand is the work's own crossing with itself, held at
+    // the whisper by pins the host set; a crossing arriving over it must not be held for a fold
+    // cadence (that road is for a crossing a swipe interrupts) and must not inherit the pins. The
+    // stand is ended immediately, the pins are cleared, and the new command takes the stage clean.
+    if (cur && cur.cmd && cur.cmd.kind === "stand" && cmd.kind !== "stand") {
+      pinClock = null; pinProgress = null;
+      cancel("a crossing takes the stage from the stand", true);
+    }
     // ---- A SWIPE FOLDS THE RUNNING CROSSING UP; IT NEVER CUTS IT (§2.5 / charter shelf 19) -------
     // The nineteenth shelf makes every plan exhale-able from any point, and names a swipe as the
     // first interruption it means: the crossing COMPRESSES TO ITS CADENCE, every voice resolving to
@@ -4249,7 +4273,16 @@
         stageShow(true);
         runFrame(rec, performance.now());
       }
-      rec.watchdogT = setTimeout(function () { watchdogFire(rec); }, duration + slack);
+      // A STANDING LIFE HAS NO END OF ITS OWN (2026-09-11, his word: more of the arsenal on the
+      // standing work). A command of kind «stand» is the work's own crossing with itself, held by
+      // the host inside the whisper band — the host pins the clock every frame and ends the stand
+      // by `cancel` when the seat moves or a crossing declares — so the watchdog that ends a
+      // crossing at its duration plus the slack would end a stand every few seconds and blink the
+      // picture; a stand arms none. Every other road (prepare budget, the frame loop, the hooks)
+      // is the crossing's own, untouched.
+      if (cmd.kind !== "stand") {
+        rec.watchdogT = setTimeout(function () { watchdogFire(rec); }, duration + slack);
+      }
     }
 
     // EVERY INSTRUMENT THE SCORE NAMES IS PREPARED, each on its own cue and its own grant. A voice
@@ -4425,18 +4458,29 @@
   }
   function report() {
     var s = times.slice().sort(function (a, b) { return a - b; });
+    // A STAND IS NOT A CROSSING ON THIS SURFACE. Every reader of this report — the walk's own
+    // diagnostics, the route gate, the rows that judge a landing — reads the CROSSING: its rest,
+    // its handoffs, its stack, its grant. A stand that took the stage right after a dock would
+    // otherwise answer for that landing with its own live, unrested state (the route gate read
+    // «camera did not reach the destination hang» on every crossing the moment a stand followed
+    // it). So a stand is named on its own row and every crossing field reads the last crossing.
+    var stand = cur && cur.cmd && cur.cmd.kind === "stand" ? cur : null;
+    var cx = stand ? null : cur;
     return {
-      state: cur ? cur.state : (awaiting ? "awaiting" : "idle"),
-      active: !!cur,
-      gen: cur ? cur.cmd.gen : null,
+      state: stand ? "standing" : (cx ? cx.state : (awaiting ? "awaiting" : "idle")),
+      active: !!cx,
+      standing: !!stand,
+      stand: stand ? { gen: stand.cmd.gen, instrument: stand.inst ? stand.inst.name : null,
+                       stack: (stand.voices || []).map(function (v) { return v.cue ? v.cue.id : null; }) } : null,
+      gen: cx ? cx.cmd.gen : null,
       // The superseding command waiting for the crossing it superseded to fold up, by its own
       // generation — null whenever nothing is held, which is every instant outside a fold.
       held: foldHeld ? foldHeld.cmd.gen : null,
-      duration: cur ? cur.duration : null,
-      variant: cur ? cur.variant : null,
+      duration: cx ? cx.duration : null,
+      variant: cx ? cx.variant : null,
       prepareBudgetMs: prepareBudgetMs, settleSlackMs: settleSlackMs,
       events: log.slice(),
-      instrument: cur ? cur.inst.name : (lastRun ? lastRun.instrument : null),
+      instrument: cx ? cx.inst.name : (lastRun ? lastRun.instrument : null),
       registered: Object.keys(instruments),
       // THE SITE'S RECORD, on the diagnostic surface: where it was read from, whether it was read
       // or refused, the reason in the host's own words when it was refused, and the names it
@@ -4457,7 +4501,7 @@
       // the instrument published it through `reportApplied`; `handles` beside it is what the HOST
       // resolved and asked for. The two stand side by side on purpose: the plan's intention and the
       // run-time truth, readable against each other on one row.
-      stack: cur ? cur.voices.map(function (v) {
+      stack: cx ? cx.voices.map(function (v) {
         return { id: v.cue ? v.cue.id : null, instrument: v.inst.name, stack: v.stack,
                  line: v.line, live: !!v.live, played: !!v.played,
                  window: v.cue ? (v.cue.window || null) : null,
@@ -4465,19 +4509,19 @@
                  handles: v.lastHandles || null,
                  applied: v.applied || null };
       }) : (lastRun ? lastRun.stack : null),
-      live: cur ? cur.liveCues : (lastRun ? lastRun.live : null),
-      drew: cur ? cur.drewLastFrame : (lastRun ? lastRun.drew : null),
+      live: cx ? cx.liveCues : (lastRun ? lastRun.live : null),
+      drew: cx ? cx.drewLastFrame : (lastRun ? lastRun.drew : null),
       // THE GRID THE STACK ABOVE WAS DRAWN ON. Live while a pass runs; after the landing it is the
       // grid that run ended on, frozen with the rest of what it left behind. A reading on the stack
       // and this pair are one passage's facts and must be read together — the census further down
       // is the live canvas and answers a different question.
-      drawnOn: cur ? { buffer: W + "x" + H, dpr: dpr }
+      drawnOn: cx ? { buffer: W + "x" + H, dpr: dpr }
                    : (lastRun ? lastRun.drawnOn : null),
       // §4.4's tier reckoning, every number it is judged on rather than only its verdict
-      budget: cur ? budgetOfScore(cur.cmd.score) : (lastRun ? lastRun.budget : null),
+      budget: cx ? budgetOfScore(cx.cmd.score) : (lastRun ? lastRun.budget : null),
       // §7's grant across the stack: what was asked, what the ladder landed on, and the sum the
       // census below is judged against
-      grant: cur ? cur.grant : (lastRun ? lastRun.grant : null),
+      grant: cx ? cx.grant : (lastRun ? lastRun.grant : null),
       budgets: BUDGET,
       // ROW S-110's reading, on the surface a person reads a thin picture back from: what this
       // device declared about itself and which published row that lands it on.
@@ -4501,20 +4545,20 @@
       // §9's inspector: the drivers with their evaluated values, the camera with its authority and
       // its pose, the handoffs it measured, and the cadence an interruption landed through. What the
       // last transaction left behind stays readable after it has gone, so a row can read a landing.
-      handles: cur ? cur.lastHandles : (lastRun ? lastRun.handles : null),
-      camera: cur ? cur.camera : (lastRun ? lastRun.camera : null),
-      camCaps: cur ? cur.caps : null,
-      rest: cur ? cur.rest : (lastRun ? lastRun.rest : null),
+      handles: cx ? cx.lastHandles : (lastRun ? lastRun.handles : null),
+      camera: cx ? cx.camera : (lastRun ? lastRun.camera : null),
+      camCaps: cx ? cx.caps : null,
+      rest: cx ? cx.rest : (lastRun ? lastRun.rest : null),
       // the two geometries of §6 as they were actually measured, so a row reads the boxes the pass
       // departed from and arrived on rather than the ones it was meant to
-      hang: cur ? hangRow(cur) : (lastRun ? lastRun.hang : null),
-      handoffs: cur ? cur.handoffs : (lastRun ? lastRun.handoffs : []),
-      cadence: cur ? cur.cadence : (lastRun ? lastRun.cadence : null),
+      hang: cx ? hangRow(cx) : (lastRun ? lastRun.hang : null),
+      handoffs: cx ? cx.handoffs : (lastRun ? lastRun.handoffs : []),
+      cadence: cx ? cx.cadence : (lastRun ? lastRun.cadence : null),
       camTolerances: { rest: CAM_REST_TOL, handoff: camHandoffTol() },
       // WHAT THE CARRIER HAD TO DO TO KEEP THE FRAME WHOLE at the last frame drawn: how many frames
       // wide it stood, how much of the pose it could carry at that width, and the widest it is ever
       // allowed to stand. A picture that looks tighter than the plan asked for reads back to these.
-      carrier: { over: cur ? (cur.camOver || 1) : null, hold: cur ? (cur.camHold || 1) : null,
+      carrier: { over: cx ? (cx.camOver || 1) : null, hold: cx ? (cx.camHold || 1) : null,
                  ceiling: +reachCeiling().toFixed(6) },
       frames: { count: s.length, p95: +quantile(s, 0.95).toFixed(2), p50: +quantile(s, 0.5).toFixed(2) },
     };
