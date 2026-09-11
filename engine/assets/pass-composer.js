@@ -3041,6 +3041,21 @@
     // travel beside the entry (:8996 below): a claim about numbers is answered over numbers, not
     // over a route. It is not a second cooldown; it is `coolOf`'s own two steps, dedupe then
     // `coolFactor`, run on a list a caller supplies.
+    // A LETTER THE WALK HAS NOT PLAYED YET IS LIFTED BY HOW MUCH THE WALK HAS ALREADY PLAYED
+    // (2026-09-11, his word: «паркета я никогда не видел»). The cooldown above only ever LOWERS a
+    // played letter, to as little as 1/(n+1) of its fit, and leaves an unplayed one at its fit — so
+    // a letter whose fit stands several times under a rival's stays under it however many steps
+    // the rival has already taken, by the arithmetic alone: the cooldown divides the rival, and a
+    // division by n + 1 does not close a gap wider than n + 1. A walk therefore keeps meeting its
+    // strongest-fitting grounds and never the modest ones, which is the complaint. The lift is the
+    // cooldown's own arithmetic turned round: an unplayed letter counts (n + 1) where the freshest
+    // played letter counts 1/(n + 1), n being the distinct letters this walk has played, so the two
+    // are the same law read from both ends and the first step of a visit (n = 0) is left exactly
+    // as it was. Roads keep their own die.
+    function noveltyOf(id, letters) {
+      if (letters === "road") return 1;
+      return walkPlayedDistinct.indexOf(id) < 0 ? walkPlayedDistinct.length + 1 : 1;
+    }
     function walkCooldown(list, id) {
       var distinct = dedupeMostRecent(Array.isArray(list) ? list : []);
       return coolFactor(distinct.indexOf(id), distinct.length);
@@ -3236,7 +3251,7 @@
       for (i = 0; i < pool.length; i++) {
         w.push(Math.max(0, Number(pool[i].fit) || 0)
                * (letters ? (letters === "road" ? coolOfRoad(pool[i].id) : coolOf(pool[i].id))
-                            * viewerBiasOf(pool[i].id) : 1)
+                            * viewerBiasOf(pool[i].id) * noveltyOf(pool[i].id, letters) : 1)
                * weatherBiasOf(pool[i]));
         total += w[i];
       }
@@ -5986,6 +6001,22 @@
         // formula's own shape.
         var reach = clamp01(num(axis.delta));
         travelCloseBase = r4(travelOpenBase + reach * (1 - travelOpenBase));
+        // A TRAVELLING VOICE THAT IS CAST IS A VOICE A PERSON CAN SEE (2026-09-11, his word: «чтобы
+        // иногда эффекты переплетались»). The two readings above compose the window from the ground's
+        // strength and the axis's reach, and by construction they can meet: a strongly held ground
+        // opens the voice late and a small reach closes it at once, so the window is `reach` of the
+        // room left after `strength` — a product of two readings that can each stand near nothing,
+        // and then the voice lives for a fraction of a second inside a passage of several. Nothing a
+        // visitor can read as a second voice lives that briefly; his word names exactly the voices
+        // this squeezes, the colour and the travelling ones. So the window keeps at least the
+        // passage's own first phase — a quarter of it, the register's `phaseWindows` default
+        // [0.25, 0.5, 0.25] in 01a-pass.js — by opening EARLIER, never by closing later: the close
+        // still anchors the arrival's own room below, and an earlier open is the very move the
+        // return-pass shift `R` already makes, so the levels law and every window bound read the
+        // same shape they always did.
+        if (travelCloseBase - travelOpenBase < TRAVEL_MIN_SHARE) {
+          travelOpenBase = r4(Math.max(0, travelCloseBase - TRAVEL_MIN_SHARE));
+        }
         // THE WORST-CASE WINDOW THIS SLOT WILL EVER RENDER, at this edge's one nonzero shift `R`
         // (the note over `R` above). Travel's own open only ever moves earlier under a shift, down
         // toward pivot's own open at 0, so `travelOpenBase * (1 - R)` is that floor; the close never
@@ -10726,6 +10757,52 @@
         camera.track[2].yaw = flt(r4(yawIn));
         camera.track[1].pitch = flt(r4(pitchOut));
         camera.track[2].pitch = flt(r4(pitchIn));
+
+        // THE SWING (2026-09-11, his word: «камера как бы меняла угол в 3D… и переводилась иногда по
+        // 3D диагонали»). Everything above reads the two works' own record and turns the camera by
+        // as much as the record asks, which on most pairs is a few degrees early in the flight and
+        // nothing a person reads as a change of viewpoint; fifteen driven walks read a yaw of a
+        // quarter radian at most, decaying from the first second. What he asks for is the point of
+        // view itself moving between the two works: leaving the departing work from one side, in
+        // depth, and arriving on the next from the other — the layer's own orbit and tilt, which
+        // turn the scene about the frame's centre (pass-layer.js `camApply`), and a diagonal the pan
+        // and the dolly travel together. It is cast SOMETIMES, on the passage's own die, as often as
+        // the tier's accompaniments allow against the fullest tier — shelf 17's own table, `TIERS`:
+        // a quiet link one time in three, a middle two in three, a culmination always. Every amount
+        // is the one bound every axis shares (`camBound`, DOLLY_CAP); the tilt takes the pitch's own
+        // half of it; the pan is clamped to the same bound so the cover proof's box holds. Both hangs
+        // are flat and square-on, so the orbit and the tilt stand at zero at either end of the
+        // flight exactly as the other axes do, and the landing rests as it always did. The lean
+        // variant drops the turn with the pitch and yaw it already drops (`camCaps`), so a device
+        // that has stepped down its ladder plays the diagonal flat.
+        var swingShare = 0, swingTier;
+        for (swingTier = 0; swingTier < TIERS.length; swingTier++) {
+          if (TIERS[swingTier].tier === tpl.tier) {
+            swingShare = TIERS[swingTier].accompaniments[1] / TIERS[TIERS.length - 1].accompaniments[1];
+          }
+        }
+        var swingDie = dieAmong(num(row[4]), key + "|swing", 1000) / 1000.0;
+        if (swingDie < swingShare) {
+          var swingSide = dieAmong(num(row[4]), key + "|swingSide", 4);   // which corner the flight leaves through
+          var swingDeep = dieAmong(num(row[4]), key + "|swingDeep", 2);   // near-to-far or far-to-near
+          var sx = (swingSide & 1) ? 1 : -1, sy = (swingSide & 2) ? 1 : -1, sz = swingDeep ? 1 : -1;
+          var swingAmount = camBound * (0.5 + 0.5 * (dieAmong(num(row[4]), key + "|swingAmount", 1000) / 1000.0));
+          var orbitOut = sx * swingAmount, orbitIn = -sx * swingAmount * 0.5;
+          var tiltOut = sy * 0.5 * swingAmount, tiltIn = -sy * 0.25 * swingAmount;
+          var stepPan = 0.5 * camBound, stepDolly = 0.5 * camBound;
+          var bound = function (v) { return Math.max(-camBound, Math.min(camBound, v)); };
+          camera.track[1].orbit = flt(r4(orbitOut));
+          camera.track[2].orbit = flt(r4(orbitIn));
+          camera.track[1].tilt = flt(r4(tiltOut));
+          camera.track[2].tilt = flt(r4(tiltIn));
+          camera.track[1].pan.x = flt(r4(bound(num(camera.track[1].pan.x) + sx * stepPan)));
+          camera.track[1].pan.y = flt(r4(bound(num(camera.track[1].pan.y) + sy * stepPan)));
+          camera.track[2].pan.x = flt(r4(bound(num(camera.track[2].pan.x) - sx * stepPan)));
+          camera.track[2].pan.y = flt(r4(bound(num(camera.track[2].pan.y) - sy * stepPan)));
+          camera.track[1].logScale = flt(r4(bound(num(camera.track[1].logScale) + sz * stepDolly)));
+          camera.track[2].logScale = flt(r4(bound(num(camera.track[2].logScale) - sz * stepDolly)));
+          camera.swing = { orbit: r4(orbitOut), tilt: r4(tiltOut), diagonal: [sx, sy, sz], die: r4(swingDie), share: r4(swingShare) };
+        }
       }
 
       var world = null;
@@ -11332,6 +11409,10 @@
     // reading of the buffer it drew on, and it can only be known after the frame is drawn: the
     // caller writes it onto this record when the host reports, so one record carries the whole
     // passage — what was asked, what came back, and what was applied or refused mid-flight.
+    // DERIVED — the least share of a passage a cast travelling voice keeps is the register's own
+    // first phase, the disassembly, of `phaseWindows` [0.25, 0.5, 0.25] (engine/client/01a-pass.js);
+    // a copy of that one number rather than a second idea of it. See the note over its use.
+    var TRAVEL_MIN_SHARE = 0.25;
     var ROUTE_ROLES = ["entrance", "quiet link", "middle", "culmination", "return"];
     // THE THREE HARMONIC FUNCTIONS THE FIVE NAMES ARE THE IMAGE OF (charter shelf 15), and the one
     // home of that vocabulary on this side of the line. The client writes `routeFunction` beside

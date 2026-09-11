@@ -803,10 +803,13 @@
       // where neither work is legible, and the arriving work is put back together on the same road.
       roles: ["disassembly", "mystery", "assembly"],
       // WHICH CATALOGUE THIS INSTRUMENT BELONGS TO (SPEC.md Requirement 123 criterion 5,
-      // ~/tlvphotos). A standing instrument, outside the crossing arsenal by the project's own
-      // record (`outsideTheCrossingArsenal`, lab/data/module-contract-additions.json), so
-      // pass-composer.js may not cast it into a crossing voice.
-      catalogue: "standing",
+      // ~/tlvphotos). Tagged `standing` on 2026-09-08 off the project's record of the OLD lab
+      // module (`outsideTheCrossingArsenal`, lab/data/module-contract-additions.json) — but that
+      // record describes the lab page this was carried from, and this file is a two-work bridge by
+      // its own manifest: `arity: 2`, the three crossing roles, the departing work giving way to
+      // the arriving one under the fold. Re-admitted 2026-09-11 on his word («моё слово мог быть
+      // неправ»): a crossing voice like every other cutter of its kinds.
+      catalogue: "crossing",
       // WHERE THIS STANDS ON THE CHARTER'S SHELF, and the reading is said to be derived. The module
       // carries no row in lab/data/module-contract.json — it postdates that table — so its level is
       // read off the two devices its own middle is built out of, both of which the charter's

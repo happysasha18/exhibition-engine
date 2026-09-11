@@ -105,6 +105,10 @@ SPAN = {
     # `panFrom = [centre.x - 0.5, centre.y - 0.5]` with a normalised centre in [0, 1]
     "panX": 0.5,
     "panY": 0.5,
+    # THE SWING (2026-09-11): `orbitOut = sx * swingAmount`, swingAmount ≤ camBound; the tilt takes
+    # the pitch's own half of it. Both stand at zero at either end of the flight like every axis.
+    "orbit": DOLLY_CAP,
+    "tilt": 0.5 * DOLLY_CAP if DOLLY_CAP else None,
 }
 
 # THE CEILING THE CARRIER MAY GROW TO, derived in the host from the render ladder's own last rung
@@ -117,10 +121,16 @@ REACH_CEILING = (1.0 / STEPS[-1]) if STEPS else None
 
 # ---------------------------------------------------------------- string rows
 
-check("EX-COVER the composed camera track names six axes, so the span has six sides",
+check("EX-COVER the composed camera track names six axes always and two more on a swing, so the "
+      "span has eight sides",
       all(k in TRACK_TEXT for k in ("pan:", "logScale:", "pitch:", "yaw:", "roll:", "fov:"))
-      and "orbit" not in TRACK_TEXT and "tilt" not in TRACK_TEXT,
-      "orbit and tilt stand at their neutral on every composed flight, so they are not in the span; "
+      and "orbit" not in TRACK_TEXT and "tilt" not in TRACK_TEXT
+      and "camera.track[1].orbit = flt(r4(orbitOut));" in COMPOSER
+      and "camera.track[1].tilt = flt(r4(tiltOut));" in COMPOSER
+      and "var swingAmount = camBound * (0.5 + 0.5 *" in COMPOSER
+      and "var tiltOut = sy * 0.5 * swingAmount" in COMPOSER,
+      "orbit and tilt are named only where the swing casts them (2026-09-11), bounded by the one "
+      "bound every axis shares, so they are two more sides of the same box; "
       f"the track literal reads: {' '.join(TRACK_TEXT.split())[:200]}")
 
 check("EX-COVER the caps are the composer's own and are read off its file, never chosen here",

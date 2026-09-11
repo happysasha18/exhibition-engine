@@ -180,7 +180,7 @@
     const dumpBtn = document.createElement("button");
     dumpBtn.type = "button";
     dumpBtn.className = "exv-dump";
-    dumpBtn.textContent = "выгрузить";
+    dumpBtn.textContent = "копия отладки";
     dumpBtn.addEventListener("click", verdictDump);
 
     const row = document.createElement("div");
@@ -293,9 +293,46 @@
     // instead of the other. Neither failing (a denied clipboard permission, a download the browser
     // blocks) touches the other.
     function verdictDump() {
-      const out = { walk: verdictWalk, startedAt: verdictStartedAt, rows: verdictRows.slice(),
-                   steps: verdictHistory.slice() };
+      // ONE COPY CARRIES THE WHOLE DEBUG READING OF THIS VISIT (2026-09-11, his word: a neat button
+      // that copies everything, and says which page and which part of the walk it came from). The
+      // passages are the very rows the walk derived — request (the die, the role, the walk's own
+      // memory) and the score the layer played — so the Lab (tlvphotos.com/lab/) replays any one of
+      // them as the site played it; the score's byte image and the plan's own copy of the cues are
+      // left out, and a request's two work records travel as their ids.
+      const passages = (typeof passPassages !== "undefined" ? passPassages : []).map((r) => {
+        const o = {};
+        Object.keys(r || {}).forEach((k) => { if (k !== "json" && k !== "bytes" && k !== "plan") o[k] = r[k]; });
+        if (o.request) {
+          const q = {};
+          Object.keys(o.request).forEach((k) => {
+            q[k] = (k === "workRecordA" || k === "workRecordB") ? { id: o.request[k] && o.request[k].id } : o.request[k];
+          });
+          o.request = q;
+        }
+        return o;
+      });
+      let host = null, layer = null;
+      try { host = passReport(); } catch (e) {}
+      try { layer = passLayer && passLayer.report ? passLayer.report() : null; } catch (e) {}
+      const hang = (typeof order !== "undefined" && Array.isArray(order)) ? order.map(String) : [];
+      const standing = (typeof pick !== "undefined" && pick) ? String(pick) : null;
+      const out = {
+        page: { href: location.href, path: location.pathname, title: document.title,
+                openedAt: verdictStartedAt, copiedAt: new Date().toISOString(),
+                viewport: { w: innerWidth, h: innerHeight }, dpr: devicePixelRatio || 1,
+                userAgent: navigator.userAgent },
+        walk: { entered: standing, hang: hang, hangLength: hang.length,
+                stepsPlayed: verdictHistory.length,
+                lastStep: verdictHistory.length ? { from: verdictHistory[verdictHistory.length - 1].from,
+                                                    to: verdictHistory[verdictHistory.length - 1].to } : null },
+        rows: verdictRows.slice(),
+        steps: verdictHistory.slice(),
+        passages: passages,
+        host: host, layer: layer,
+      };
       const text = JSON.stringify(out, null, 2);
+      dumpBtn.textContent = "скопировано · " + passages.length;
+      setTimeout(() => { dumpBtn.textContent = "копия отладки"; }, 2500);
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(text);

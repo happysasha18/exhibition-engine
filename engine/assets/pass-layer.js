@@ -351,16 +351,36 @@
     var tail = times.slice(times.length - n).sort(function (a, b) { return a - b; });
     return quantile(tail, 0.95);
   }
+  // THE LADDER DECIDES DURING A PASS AND STEPS BETWEEN PASSES (2026-09-11, his word: «без
+  // рывков»). Until today `changeStep` ran on the very frame the percentile crossed its bar, in
+  // the middle of a crossing: the drawing buffer was re-cut, every published reading forgotten
+  // (`forgetApplied`), and the picture on screen changed its grain in one frame — by construction
+  // a step is a re-cut of the buffer, and a re-cut under a running pass is a grain change a person
+  // sees as a jump, on any device whose pace crosses the bar while a picture is up. That is the
+  // jump the Lab's bench never shows, because a held frame measures no pace. The
+  // reading is unchanged; only its application waits for the next dock, where the canvas is hidden
+  // and nothing on it can be seen to move. The composer already reads the pace on every request
+  // (`framePace`) and lightens the NEXT plan, so a device that is over the bar is answered twice
+  // at the same boundary — a thinner buffer and a lighter plan — and never in the middle of a
+  // picture. `cur` is null exactly between transactions (`finish`, `declineCurrent`).
+  var pendingStep = null;
   function decideScale() {
     if (fixedScale) return;
-    var hot = p95Over(WIN_DROP);
+    var hot = p95Over(WIN_DROP), to = null;
     if (hot !== null && hot > P95_DROP && stepIx < STEPS.length - 1 && sinceChange >= WIN_DROP) {
-      changeStep(stepIx + 1); return;
+      to = stepIx + 1;
+    } else {
+      var cool = p95Over(WIN_RAISE);
+      if (cool !== null && cool < P95_RAISE && stepIx > 0 && sinceChange >= WIN_RAISE) to = stepIx - 1;
     }
-    var cool = p95Over(WIN_RAISE);
-    if (cool !== null && cool < P95_RAISE && stepIx > 0 && sinceChange >= WIN_RAISE) {
-      changeStep(stepIx - 1);
-    }
+    if (to === null) return;
+    if (cur) { pendingStep = to; sinceChange = 0; return; }
+    changeStep(to);
+  }
+  function stepBetweenPasses() {
+    if (pendingStep === null || cur) return;
+    var to = pendingStep; pendingStep = null;
+    if (to !== stepIx) changeStep(to);
   }
   function noteFrame(now) {
     if (lastAt) {
@@ -2638,7 +2658,15 @@
     // a single voice that still overruns is where §7's own floor stands and the plain grammar
     // plays, which is the one case this returns nothing for.
     if (voices.length > 1) {
-      var lighter = stackOrder(voices).slice(0, -1).map(function (r) { return r; });
+      // THE STACK IS ORDERED BY ITS CUES, AND THE ROWS NAME THE VOICE THEY WERE BUILT FROM. Until
+      // 2026-09-11 this handed `stackOrder` the voice records themselves, so every row's `.cue` was
+      // a voice and the match below (`row.cue === voice.cue`) compared a voice to a cue and never
+      // held: `kept` came back empty on every stack, the lightening this branch exists for never
+      // ran once, and every three-voice score offered at «lean» fell to the floor and the last
+      // resort — a different crossing from the one composed, cast in front of the person on the
+      // device that could least afford a surprise. The rows are built off the cues now, as the
+      // draw order everywhere else already is, and a lightened stack is what plays.
+      var lighter = stackOrder(voices.map(function (v) { return v.cue; })).slice(0, -1);
       var kept = [];
       for (var k = 0; k < voices.length; k++) {
         for (var n2 = 0; n2 < lighter.length; n2++) {
@@ -2803,6 +2831,7 @@
       try { if (x.dispose) x.dispose(); } catch (e) {}
     });
     cur = null;
+    stepBetweenPasses();
     // THE HELD COMMAND TAKES THE STAGE THE INSTANT THE FOLD LETS GO OF IT. This stands in `finish`
     // rather than at the end of the cadence because `finish` is the single dock every exit from
     // `running` passes through: a fold that lands on its own envelope, one the deadline force-ends,
@@ -2894,6 +2923,7 @@
   function declineCurrent(rec, why) {
     if (cur !== rec) return;
     cur = null;
+    stepBetweenPasses();
     if (!rec.cmd.__lastResortTried) {
       var cast = lastResortCast(rec.cmd);
       if (cast) {

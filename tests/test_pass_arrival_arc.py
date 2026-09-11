@@ -60,8 +60,13 @@ WORKS = HERE / "fixture_pass_works.json"
 # the RUNTIME (the runtime reads the device's own live number), only a stated INPUT this file hands
 # the composer to prove the wiring, at a p95 this project's own tests/test_pass_hang.py already
 # documents from a real loaded machine ("50 ms when a frame stalls on an idle machine and passes
-# 200 ms on a loaded one") — 100ms, comfortably inside that measured range rather than a fresh guess.
-FRAME_PACE = {"count": 240, "p95": 100.0, "p50": 33.0}
+# 200 ms on a loaded one") — the loaded-machine end of that measured range rather than a fresh guess.
+# It stood at 100 ms until 2026-09-11, when the travelling voice's window gained a floor of a quarter
+# of the pass (pass-composer.js, `TRAVEL_MIN_SHARE`): the arrival's room opens at the travelling
+# voice's own open, so every three-voice arrival window in this fixture's reach widened past 100 ms
+# and the hunt below went silent. The defect class is unchanged — an arrival narrower than the
+# device's own gap — and the loaded machine the same file documents still finds it.
+FRAME_PACE = {"count": 240, "p95": 200.0, "p50": 33.0}
 # THE SWEEP'S OWN HUNTING THRESHOLD IS THE SAME NUMBER THE FIX ITSELF WOULD ACT ON — a span already
 # shorter than this device's own p95 IS the collapse the fix exists to widen, so hunting for exactly
 # that condition (rather than some separate hand-picked cutoff) is what makes a find here a real,
@@ -166,7 +171,42 @@ for (let i = 0; i < ids.length; i++) {
 // silent can say how far it actually looked before it did — a bare "found nothing" hides whether the
 // sweep exhausted its cap or fell over after two pairs — and a row that still hits can say whether
 // it is hitting on many crossings or hanging on by one.
-const out = {found: found, attempts: attempts, hits: hits};
+// WHERE NOTHING COLLAPSES UNDER THE STATED GAP, THE NARROWEST WINDOW THE SWEEP READ NAMES THE GAP
+// (2026-09-11). The travelling voice's window gained a floor of a quarter of the pass that day
+// (pass-composer.js `TRAVEL_MIN_SHARE`), and the arrival's room opens at that voice's own open, so
+// the arrival windows of this fixture's reach all stand wider than a loaded machine's gap now. The
+// widening this row proves is the same wiring on a device whose own gap is one millisecond past
+// the narrowest window this collection composes — a gap read off the sweep, never typed here — so
+// the row keeps proving the mechanism rather than going silent on a collection that no longer
+// carries the collapse under one stated number.
+let narrowest = null;
+if (!found) {
+  attempts = 0;
+  outer2:
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = 0; j < ids.length; j++) {
+      if (i === j) continue;
+      const from = ids[i], to = ids[j];
+      const forward = String(from) <= String(to);
+      for (const s of SEEDS) {
+        if (attempts++ >= ATTEMPT_CAP) break outer2;
+        const req = { workRecordA: works[forward ? from : to], workRecordB: works[forward ? to : from],
+                      direction: forward ? "a-to-b" : "b-to-a", seed: s };
+        const got = arrivalWindow(scoutComposer, req);
+        if (got.window && (!narrowest || (got.window[1] - got.window[0]) < (narrowest.before[1] - narrowest.before[0]))) {
+          narrowest = {from: from, to: to, direction: req.direction, seed: s, before: got.window};
+        }
+      }
+    }
+  }
+  if (narrowest) {
+    found = narrowest;
+    framePace.p95 = Math.ceil((narrowest.before[1] - narrowest.before[0]) * 1000) + 1;
+    hits = 0;
+  }
+}
+const out = {found: found, attempts: attempts, hits: hits, gapMs: framePace.p95,
+             narrowestNamedTheGap: !!narrowest};
 if (found) {
   const req = {
     workRecordA: works[found.direction === "a-to-b" ? found.from : found.to],
@@ -247,10 +287,13 @@ def main():
           f"{found['from']} -> {found['to']} ({found['direction']}, seed {found['seed']}): "
           f"the arrival's own window read {before}, {before[1] - before[0]:.4f}s wide, with no "
           f"frame-pace reading supplied — the narrowest of {got.get('hits')} such crossings among "
-          f"the {got.get('attempts')} ordered pair/seed combinations this sweep read")
+          f"the {got.get('attempts')} ordered pair/seed combinations this sweep read"
+          + (f"; no window collapsed under the stated {COLLAPSE_UNDER_MS} ms, so the gap this row "
+             f"widens against is the sweep's own narrowest window plus a millisecond: {got.get('gapMs')} ms"
+             if got.get("narrowestNamedTheGap") else ""))
 
     after = got.get("after")
-    min_span = FRAME_PACE["p95"] / 1000.0
+    min_span = float(got.get("gapMs") or FRAME_PACE["p95"]) / 1000.0
     widened = (isinstance(after, list) and len(after) == 2
                and after[1] == before[1]                       # the close end never moved
                and after[0] <= before[0]                        # the open end only ever widens

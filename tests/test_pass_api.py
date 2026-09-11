@@ -154,6 +154,8 @@ BROWSER_ROWS = [
     "PASS-API §7 · a named tier outranks the measurement and pins the rung",
     "PASS-API §7 · the ladder's middle step: the accompaniment halves, the miracle keeps its rate",
     "PASS-API §7 · below the joy floor the floor grammar plays, and the crossing is never refused",
+    "PASS-API §7 · the ladder steps between passes: frames over the bar under a running crossing "
+    "leave its rung, and the dock takes the step",
 ]
 
 # PASS-01 (TEST_MATRIX.md) — a separate list rather than two more BROWSER_ROWS entries, so the
@@ -793,7 +795,10 @@ else:
                 # The ladder is walked ONE GAP AT A TIME from its top rung to its last, and the pace
                 # is read at every rung it passes through — so the row reads the whole span of the
                 # ladder rather than two sampled points on it.
-                paces = js(br, "window.__exPass.host.configure({fixedScale:false});"
+                # THE LADDER STEPS BETWEEN PASSES (2026-09-11): a crossing the rows above left
+                # running would hold every step pending, so the bench ends it before walking the rungs.
+                paces = js(br, "window.__exPass.host.cancel('ladder rows', true);"
+                              "window.__exPass.host.configure({fixedScale:false});"
                               "window.__exPass.bench.ladder(8, 800);"
                               "var out = [window.__exPass.host.report().pace];"
                               # ten gaps a call: `ladder` restarts its own clock on every call, so the
@@ -822,7 +827,8 @@ else:
                 # host's own last resort, cast fresh on the two photographs the DOM holds — and the
                 # crossing is degraded to it rather than refused. `glides` counts the walk's own
                 # plain slide, which is what «no crossing at all» would look like.
-                started = js(br, "window.__exPass.host.configure({fixedScale:false,"
+                started = js(br, "window.__exPass.host.cancel('floor row', true);"
+                                "window.__exPass.host.configure({fixedScale:false,"
                                 " prepareBudgetMs:400, settleSlackMs:6000});"
                                 "window.__exPass.bench.ladder(40, 400);"
                                 "var before = window.__exPass.host.report().pace;"
@@ -858,6 +864,38 @@ else:
                       f"crossing plays cue(s) {floor['cues']} on «{floor['instrument']}» at state "
                       f"{floor['state']}, the floor was named {len(floor['said'])} time(s) and the "
                       f"walk's own slide ran {len(floor['mine'])} time(s) for this command")
+                # Row 21 — the product's own promise (2026-09-11, his word: «без рывков»): the rung
+                # a crossing started on is the rung it ends on. Hot frames pushed while it runs move
+                # nothing on screen; the step they earned is taken at the dock, where the canvas is
+                # hidden, and the NEXT crossing draws on the new grid.
+                br.evaluate("window.__exPass.host.cancel('between row', true);"
+                            "window.__exPass.bench.ladder(8, 800);"
+                            "window.__exPass.host.configure({fixedScale:false,"
+                            " prepareBudgetMs:400, settleSlackMs:6000})")
+                br.sleep(0.3)
+                between = js(br, "var c = window.__foldCmd(9401, 0, 'standard', 'default');"
+                                "var took = window.__exPass.host.offer(c, window.__foldHooks) === true;"
+                                "return {took: took, rung: window.__exPass.host.report().pace.rung};")
+                for _ in range(80):
+                    if jhost(br)["state"] == "running":
+                        break
+                    br.sleep(0.05)
+                during = js(br, "var r0 = window.__exPass.host.report();"
+                               "window.__exPass.bench.ladder(40, 400);"
+                               "var r1 = window.__exPass.host.report();"
+                               "return {state: r1.state, before: r0.pace.rung, during: r1.pace.rung,"
+                               " scale: r1.pace.scale};")
+                after = js(br, "window.__exPass.host.cancel('between row', true);"
+                              "var r = window.__exPass.host.report();"
+                              "return {state: r.state, rung: r.pace.rung};")
+                check(BROWSER_ROWS[21],
+                      between["took"] and between["rung"] == 0
+                      and during["state"] == "running"
+                      and during["before"] == 0 and during["during"] == 0
+                      and after["rung"] == 1,
+                      f"offered at rung {between['rung']}; 400 frames of 40 ms pushed while the "
+                      f"crossing ran (state {during['state']}) left it at rung {during['during']} "
+                      f"(scale {during['scale']}); once it ended the rung read {after['rung']}")
                 br.evaluate("window.__exPass.bench.ladder(8, 800);"
                            "window.__exPass.host.configure({fixedScale:false})")
                 br.sleep(0.6)
