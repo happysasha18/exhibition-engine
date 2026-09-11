@@ -356,7 +356,7 @@ BROWSER_ROWS = [
     "PASS-GEARS a door the instrument cannot keep whole is refused, with the alpha it measured",
     "PASS-GEARS the door is read on the buffer the shader draws on, not the CSS frame around it",
     "PASS-GEARS the buffer the phone actually draws: the leaking door is held and the pass plays",
-    "PASS-GEARS the buffer moves between a pass's two doors and the exit door still holds",
+    "PASS-GEARS the buffer holds one grid across a pass, and the ladder's step waits for the dock",
 ]
 
 missing = [str(p) for p in (PHOTOS + [LAB / "effects" / "gears.js", CUTLINES]) if not p.exists()]
@@ -1110,31 +1110,28 @@ else:
                 exit_on_exit_buf = values_of(pose_of(LAD_POSE, LAD_SIZE_TO, 1, exit_buf, seed=0))
                 br.evaluate("window.__cancel('ladder row'); 0")
                 br.sleep(0.5)
+                # THE LADDER STEPS BETWEEN PASSES (2026-09-11): sixty frames of 40 ms pushed while
+                # this pass runs earn a step, but the buffer the exit door is drawn on is the buffer
+                # the entry door was drawn on — one grid, one picture — and the step is taken once
+                # the pass has let go of the stage.
+                br.sleep(0.2)          # the step lands once the canvas is hidden, two frames after the dock
+                after_cancel = js(br, "var r = window.__report(); return {rung: r.pace.rung, buffer: r.census.buffer};")
                 check(BROWSER_ROWS[28],
                       at_entry["buffer"] == "%dx%d" % (VW, VH)
-                      and at_exit["buffer"] != at_entry["buffer"]
+                      and at_exit["buffer"] == at_entry["buffer"]
                       and at_entry["state"] == "running" and at_exit["state"] == "running"
                       and at_exit["drew"] == 1
                       and not at_entry["refused"] and not at_exit["refused"]
-                      and exit_on_entry_buf["doorHeld"] is None
                       and exit_on_entry_buf["doorWhyNo"] is None
                       and exit_on_exit_buf["doorWhyNo"] is None
-                      and (" x ".join(exit_buf) + " buffer") in (exit_on_exit_buf["doorHeld"] or "")
-                      and exit_on_exit_buf["sizeRequest"] == LAD_SIZE_TO
-                      and exit_on_exit_buf["sizeRungs"] == -1
-                      and abs(exit_on_exit_buf["size"] - LAD_APPLIED) < 1e-9,
-                      "the entry door drew on %s at scale %s (state %s, %s cue) and the exit door "
-                      "on %s at scale %s (state %s, %s cue), "
-                      "one pass and two grids. The exit size the composer serialised is whole on "
-                      "the first (%s) and on the second says «%s», where it moves %d rung to %.6f "
-                      "and keeps the request at %s. Refused on the road: %s"
-                      % (at_entry["buffer"], at_entry["scale"], at_entry["state"],
-                         at_entry["drew"], at_exit["buffer"],
-                         at_exit["scale"], at_exit["state"], at_exit["drew"],
-                         exit_on_entry_buf["doorHeld"] or "nothing said",
-                         exit_on_exit_buf["doorHeld"] or "nothing",
-                         exit_on_exit_buf["sizeRungs"], exit_on_exit_buf.get("size") or -1,
-                         exit_on_exit_buf["sizeRequest"],
+                      and after_cancel["rung"] >= 1
+                      and after_cancel["buffer"] != at_entry["buffer"],
+                      "the entry door drew on %s at scale %s and the exit door on %s at scale %s "
+                      "(state %s/%s, drew %s), one pass and one grid; once the pass let go the "
+                      "ladder stood on rung %s and the buffer read %s. Refused on the road: %s"
+                      % (at_entry["buffer"], at_entry["scale"], at_exit["buffer"], at_exit["scale"],
+                         at_entry["state"], at_exit["state"], at_exit["drew"],
+                         after_cancel["rung"], after_cancel["buffer"],
                          (at_entry["refused"] + at_exit["refused"]) or "nothing"))
 
     shutil.rmtree(BENCH, ignore_errors=True)

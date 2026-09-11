@@ -257,7 +257,9 @@
     if (!frameEl) return;
     var g = null;
     try { g = rec.hooks && rec.hooks.hangGeometry ? rec.hooks.hangGeometry(rec.cmd.from && rec.cmd.from.id) : null; } catch (e) { g = null; }
-    if (!g || !(g.w > 0) || !(g.h > 0)) { frameEl.style.clipPath = "inset(100%)"; return; }
+    // A host that hands no box (the Lab's own bench mounts the frame in its own rectangle) keeps
+    // the whole frame; clipping to nothing was a blank stage under a standing life on the bench.
+    if (!g || !(g.w > 0) || !(g.h > 0)) { frameEl.style.clipPath = ""; return; }
     var top = Math.max(0, g.y), left = Math.max(0, g.x);
     var right = Math.max(0, cssW - (g.x + g.w)), bottom = Math.max(0, cssH - (g.y + g.h));
     frameEl.style.clipPath = "inset(" + top.toFixed(2) + "px " + right.toFixed(2) + "px "
@@ -266,7 +268,7 @@
   function stageShow(on) {
     if (!stage) return;
     if (on) stageGen++;
-    if (!on && frameEl) frameEl.style.clipPath = "";
+    if (frameEl) frameEl.style.clipPath = "";   // a stand re-applies its own clip every frame
     stage.canvas.style.visibility = on ? "visible" : "hidden";
     if (frameEl) frameEl.style.visibility = on ? "visible" : "hidden";
     if (!on) {
@@ -312,6 +314,11 @@
         if (stageGen !== gen) return;
         stageShow(false);
         camApply(null, caps);
+        // THE LADDER'S PENDING STEP IS TAKEN HERE, ON A HIDDEN CANVAS. Re-cutting the buffer
+        // clears it, and a canvas still on screen would show that clear as a black flash for the
+        // two frames the hide waits — on exactly the devices the ladder is for. A new pass that
+        // took the stage first (stageGen moved) keeps the step pending for its own dock.
+        stepBetweenPasses();
       });
     });
   }
@@ -1184,6 +1191,12 @@
   // unbound bar IS that bar rather than a second copy of it. A drawing buffer genuinely one point
   // wide would land here too, and rightly: one point of a one-point buffer is the whole frame, a
   // bar that measures nothing.
+  // The pose brought exactly onto another on every place the rest reads (fov left as it stands).
+  function camSnap(pose, onto) {
+    var out = {};
+    CAM_KEYS.forEach(function (k) { out[k] = (k === "fov") ? pose[k] : (typeof onto[k] === "number" ? onto[k] : 0); });
+    return out;
+  }
   function camHandoffTol() {
     return (W > 1 || H > 1) ? Math.max(1 / W, 1 / H) : CAM_REST_TOL;
   }
@@ -1306,10 +1319,15 @@
   // records the fallback. Which axes lean drops is a taste call and is named as a question.
   // Orbit and tilt travel with pitch and yaw: a turn about the subject is seen through a projection,
   // and without one it is an affine squash rather than a turn.
+  // EVERY VARIANT CARRIES THE WHOLE CAMERA (2026-09-11, his word: the camera changes its angle in
+  // 3D). The lean variant used to drop pitch, yaw, the field of view, orbit and tilt — named above
+  // as a taste call and a question. The pose is one CSS transform on the host's own canvas, a
+  // compositor matrix and no fill; the ladder and the lean variant exist to spend fewer PIXELS,
+  // and a projective matrix spends none. A device on lean was exactly the device that never saw
+  // the turn, and a turn is what the camera is for.
   function camCaps(variant) {
-    var deep = variant !== "lean";
-    return { panX: true, panY: true, logScale: true, roll: true, pitch: deep, yaw: deep, fov: deep,
-             orbit: deep, tilt: deep };
+    return { panX: true, panY: true, logScale: true, roll: true, pitch: true, yaw: true, fov: true,
+             orbit: true, tilt: true };
   }
 
   // The pose, applied. One transform on the host's own canvas, above every pixel the instrument drew.
@@ -2767,6 +2785,10 @@
     // and box-fold's real crossings as never docking. Repaired at the source, in `camPoseAt`.
     // Capping the attempts here instead was tried on 2026-09-01 and reverted: it lands a stage cue
     // short of its own door, which is the thing this road exists to prevent.
+    if (restOff > CAM_REST_TOL && restOff <= camHandoffTol() && rec.lastPose) {
+      rec.lastPose = camSnap(rec.lastPose, neededRest);      // the same sub-pixel snap `settle` takes
+      restOff = camOff(rec.lastPose, neededRest);
+    }
     if (restOff > CAM_REST_TOL) {
       if (rec.inst && rec.inst.manifest && (!rec.cadence || rec.cadence.ended)) {
         rec.cadence = null;
@@ -2802,7 +2824,7 @@
       logEvt("camera-not-rested", rec.cmd.gen,
              "the last pose stands " + rec.rest.off.toFixed(6) + " from the " + rec.rest.on + " pose");
     }
-    lastRun = { camera: rec.camera || null, rest: rec.rest, handoffs: rec.handoffs,
+    if (rec.cmd && rec.cmd.kind !== "stand") lastRun = { camera: rec.camera || null, rest: rec.rest, handoffs: rec.handoffs,
                 // Whether the flight itself was the transition, so a walk and a row can read what
                 // kind of passage played rather than infer it from the shape of the pose.
                 cameraLed: camLed(rec.cmd.score),
@@ -2846,7 +2868,6 @@
       try { if (x.dispose) x.dispose(); } catch (e) {}
     });
     cur = null;
-    stepBetweenPasses();
     // THE HELD COMMAND TAKES THE STAGE THE INSTANT THE FOLD LETS GO OF IT. This stands in `finish`
     // rather than at the end of the cadence because `finish` is the single dock every exit from
     // `running` passes through: a fold that lands on its own envelope, one the deadline force-ends,
@@ -2906,6 +2927,14 @@
     // test suite already reads back (`tests/test_pass_hang.py`'s REST_TOL, the same 1e-6): no
     // second threshold is invented for this gate.
     var restAt = cur.hangPoseB || CAM_NEUTRAL;
+    // A MISS UNDER ONE PIXEL OF THE BUFFER IS SNAPPED, NOT FLOWN (2026-09-11, his word «без
+    // рывков»). A cue that owns the camera (box-fold's own pose) lands a hair off the hang pose —
+    // under the handoff's own tolerance, one pixel of the drawing buffer, which no frame can show —
+    // and the rest gate below, held to 1e-6, then flew the whole 500 ms cadence to close a distance
+    // nobody sees: a half-second hold on the arrived picture before every such dock, on the most
+    // common ground of a culmination. The gate keeps its exactness; what it lands on is a pose the
+    // eye already saw at rest.
+    if (cur.lastPose && camOff(cur.lastPose, restAt) <= camHandoffTol()) cur.lastPose = camSnap(cur.lastPose, restAt);
     var atRest = camOff(cur.lastPose || CAM_NEUTRAL, restAt) <= CAM_REST_TOL;
     if (!atRest && cur.inst && cur.inst.manifest) {
       cadenceStart(cur, "settle-rest", false, "docked");

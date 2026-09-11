@@ -112,6 +112,7 @@
   // own crossing would begin, and no further than an eighth of it, and it rests again when the
   // hand leaves. Every number is the requirement's or the composer's; nothing scales with the
   // collection — one request, for the one work under the hand, when the hand arrives.
+  const STAND_ON_SITE = false;               // his word of 2026-09-11 18:21 — see standDraw
   const STAND_SHARE = 1 / STAND_BREATH;     // R/32 — the breath's share of the letter's travel
   const STAND_LEAN = 1 / 8;                  // R/8  — the lean's cap, Requirement 38 criterion 1
   let standCmd = null;                       // {id, gen, duration} of the running stand
@@ -163,6 +164,12 @@
   }
   function standDraw() {
     standClear();                                   // the CSS swell stays off (his word of 2026-09-06)
+    // THE STAND IS OFF ON THE SITE (his word of 2026-09-11 18:21). On a phone the stand's canvas,
+    // clipped to the work's box, covered the doors to the darkroom and the VJ that stand over the
+    // picture's corner, and a finger drawing the lean read against the walk's own gestures — the
+    // hold that offers the picture, the swipe that steps. The Lab keeps the standing life on its
+    // own bench; the site plays it again only once its place among those gestures is decided.
+    if (!STAND_ON_SITE) return false;
     const rep = standLayerReport(), hand = standHand();
     if (!rep) { standCmd = null; return false; }
     if (rep.active) { standCmd = null; return false; }          // a crossing owns the frame; a stand was cut with it
@@ -190,6 +197,26 @@
     const at = Math.min(1, breath + lean);
     try { passLayer.configure({ clockPin: at * standCmd.duration / 1000, progressPin: at }); } catch (e) {}
     return true;
+  }
+  // THE WHOLE ARSENAL IS WARMED IN THE VISIT'S FIRST IDLE MOMENT (2026-09-11, his word on files
+  // that arrive late). Every letter the walk has not played yet is now lifted on the die, so a
+  // walk meets many first letters, and a first letter's file used to be asked for at the gesture
+  // and waited on (`instruments-awaited`) — a stall at the very moment the person moved. The layer
+  // already owns the warm road (`prewarmInstruments`, the same one the walk's own look-ahead uses);
+  // this asks it for every name the site's record carries, once, in idle time after the walk has
+  // landed once, so the first gesture on any letter finds its file already read. Nothing here is
+  // measured or thresholded: the names are the record's, the moment is the browser's own idle.
+  let standWarmed = false;
+  function standWarmArsenal() {
+    if (standWarmed || !passLayer || typeof passLayer.prewarmInstruments !== "function") return;
+    standWarmed = true;
+    const ask = () => {
+      let names = [];
+      try { names = ((passLayer.report() || {}).record || {}).names || []; } catch (e) { names = []; }
+      try { passLayer.prewarmInstruments(names); } catch (e) {}
+    };
+    if (typeof requestIdleCallback === "function") requestIdleCallback(ask, { timeout: 4000 });
+    else setTimeout(ask, 1500);
   }
   // The hand arriving on a work is the fourth thing that makes a work drawable (the three below
   // are the hang, a work in view and a dock): the walk attaches the hand on these same events
@@ -229,6 +256,7 @@
   }
   function standWake() {
     tiltArm();
+    standWarmArsenal();
     if (standRaf !== null || typeof requestAnimationFrame !== "function") return;
     standRaf = requestAnimationFrame(standTick);
   }

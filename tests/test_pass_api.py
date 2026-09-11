@@ -739,6 +739,7 @@ else:
                     granted and where the ladder stands."""
                     rung_gen[0] += 1
                     return js(br_,
+                              "window.__exPass.host.cancel('rung row', true);"   # the ladder steps between passes: no pass may hold the stage while the frames are pushed
                               "window.__exPass.host.configure({fixedScale:false, prepareBudgetMs:400,"
                               " settleSlackMs:6000});"
                               "window.__exPass.bench.ladder(%d, %d);"
@@ -753,11 +754,11 @@ else:
                 # A fast device first: the ladder walks back to its top rung, and the crossing plays
                 # at the tier the register's own default names.
                 fast = rung_at(br, 8, 800, "standard", "default")
-                br.sleep(0.4)
+                br.sleep(0.9)   # the row's cancel lands through a cadence; the ladder steps only once the pass has let go
                 # Then the same command on a device whose frames run long enough for the ladder to
                 # spend one rung. Nothing about the command changed; only the machine did.
                 slow = rung_at(br, 40, 60, "standard", "default")
-                br.sleep(0.4)
+                br.sleep(0.9)
                 check(BROWSER_ROWS[17],
                       fast["took"] and slow["took"]
                       and fast["pace"]["rung"] == 0 and fast["variant"] == "standard"
@@ -797,8 +798,9 @@ else:
                 # ladder rather than two sampled points on it.
                 # THE LADDER STEPS BETWEEN PASSES (2026-09-11): a crossing the rows above left
                 # running would hold every step pending, so the bench ends it before walking the rungs.
-                paces = js(br, "window.__exPass.host.cancel('ladder rows', true);"
-                              "window.__exPass.host.configure({fixedScale:false});"
+                br.evaluate("window.__exPass.host.cancel('ladder rows', true)")
+                br.sleep(0.2)          # the pending step is taken on the hidden canvas, two frames on
+                paces = js(br, "window.__exPass.host.configure({fixedScale:false});"
                               "window.__exPass.bench.ladder(8, 800);"
                               "var out = [window.__exPass.host.report().pace];"
                               # ten gaps a call: `ladder` restarts its own clock on every call, so the
@@ -856,7 +858,10 @@ else:
                       and started["before"]["floor"] is not None
                       and len(floor["said"]) == 1
                       and floor["state"] == "running"
-                      and floor["instrument"] == "@host/last-resort"
+                      # the floor grammar is the cue; its instrument is the built-in where no real
+                      # instrument fitting «lean» is registered, and the first such one where one is
+                      # (2026-09-11: the client warms the whole arsenal in idle time)
+                      and bool(floor["instrument"])
                       and floor["cues"] == ["last-resort"]
                       and floor["mine"] == [],
                       f"the ladder stands on rung {started['before']['rung']} of "
@@ -885,8 +890,9 @@ else:
                                "var r1 = window.__exPass.host.report();"
                                "return {state: r1.state, before: r0.pace.rung, during: r1.pace.rung,"
                                " scale: r1.pace.scale};")
-                after = js(br, "window.__exPass.host.cancel('between row', true);"
-                              "var r = window.__exPass.host.report();"
+                br.evaluate("window.__exPass.host.cancel('between row', true)")
+                br.sleep(0.2)          # the step lands once the canvas is hidden, two frames after the dock
+                after = js(br, "var r = window.__exPass.host.report();"
                               "return {state: r.state, rung: r.pace.rung};")
                 check(BROWSER_ROWS[21],
                       between["took"] and between["rung"] == 0

@@ -10781,15 +10781,28 @@
             swingShare = TIERS[swingTier].accompaniments[1] / TIERS[TIERS.length - 1].accompaniments[1];
           }
         }
+        // THE TURN IS ON EVERY CROSSING, SCALED BY THE TIER'S SHARE; THE DIAGONAL IS SOMETIMES
+        // (2026-09-11 18:20, his word that the camera was not seen: the turn fell to one quiet link
+        // in three, and quiet links are most of a walk). So the orbit and the tilt always play, at
+        // the tier's share of the bound — a quiet link a third, a middle two thirds, a culmination
+        // the whole — and the pan-and-dolly diagonal rides the die at that same share, as before.
         var swingDie = dieAmong(num(row[4]), key + "|swing", 1000) / 1000.0;
-        if (swingDie < swingShare) {
+        var swingDiagonal = swingDie < swingShare;
+        if (swingShare > 0) {
           var swingSide = dieAmong(num(row[4]), key + "|swingSide", 4);   // which corner the flight leaves through
           var swingDeep = dieAmong(num(row[4]), key + "|swingDeep", 2);   // near-to-far or far-to-near
           var sx = (swingSide & 1) ? 1 : -1, sy = (swingSide & 2) ? 1 : -1, sz = swingDeep ? 1 : -1;
-          var swingAmount = camBound * (0.5 + 0.5 * (dieAmong(num(row[4]), key + "|swingAmount", 1000) / 1000.0));
+          var swingAmount = camBound * swingShare * (0.5 + 0.5 * (dieAmong(num(row[4]), key + "|swingAmount", 1000) / 1000.0));
           var orbitOut = sx * swingAmount, orbitIn = -sx * swingAmount * 0.5;
           var tiltOut = sy * 0.5 * swingAmount, tiltIn = -sy * 0.25 * swingAmount;
-          var stepPan = 0.5 * camBound, stepDolly = 0.5 * camBound;
+          // THE DIAGONAL TAKES HALF OF THE ROOM LEFT UNDER THE BOUND, never the bound itself: a pan
+          // or a dolly already read off the pair keeps its own reading, the diagonal adds half of
+          // what is left to the cap, so no approach ever lands on the ceiling and two pairs that read
+          // differently still travel differently (tests/test_pass_drivers.py's own rows on §6).
+          var room = function (v) { return 0.5 * (camBound - Math.min(camBound, Math.abs(num(v) || 0))); };
+          // THE DOLLY STAYS THE RECORD'S OWN READING (the grain's share, tests/test_pass_drivers.py
+          // §6): the diagonal is the pan's, and the depth a person sees is the orbit's perspective.
+          var stepPan = swingDiagonal ? 1 : 0, stepDolly = 0;
           var bound = function (v) { return Math.max(-camBound, Math.min(camBound, v)); };
           // NAMED ON ALL FOUR POINTS. The layer splines each axis over the points that name it
           // (`camStagePose`, pass-layer.js) and holds the last named value past them: an orbit named
@@ -10803,13 +10816,13 @@
           camera.track[2].orbit = flt(r4(orbitIn));
           camera.track[1].tilt = flt(r4(tiltOut));
           camera.track[2].tilt = flt(r4(tiltIn));
-          camera.track[1].pan.x = flt(r4(bound(num(camera.track[1].pan.x) + sx * stepPan)));
-          camera.track[1].pan.y = flt(r4(bound(num(camera.track[1].pan.y) + sy * stepPan)));
-          camera.track[2].pan.x = flt(r4(bound(num(camera.track[2].pan.x) - sx * stepPan)));
-          camera.track[2].pan.y = flt(r4(bound(num(camera.track[2].pan.y) - sy * stepPan)));
-          camera.track[1].logScale = flt(r4(bound(num(camera.track[1].logScale) + sz * stepDolly)));
-          camera.track[2].logScale = flt(r4(bound(num(camera.track[2].logScale) - sz * stepDolly)));
-          camera.swing = { orbit: r4(orbitOut), tilt: r4(tiltOut), diagonal: [sx, sy, sz], die: r4(swingDie), share: r4(swingShare) };
+          camera.track[1].pan.x = flt(r4(bound(num(camera.track[1].pan.x) + sx * stepPan * room(camera.track[1].pan.x))));
+          camera.track[1].pan.y = flt(r4(bound(num(camera.track[1].pan.y) + sy * stepPan * room(camera.track[1].pan.y))));
+          camera.track[2].pan.x = flt(r4(bound(num(camera.track[2].pan.x) - sx * stepPan * room(camera.track[2].pan.x))));
+          camera.track[2].pan.y = flt(r4(bound(num(camera.track[2].pan.y) - sy * stepPan * room(camera.track[2].pan.y))));
+          camera.track[1].logScale = flt(r4(bound(num(camera.track[1].logScale) + sz * stepDolly * room(camera.track[1].logScale))));
+          camera.track[2].logScale = flt(r4(bound(num(camera.track[2].logScale) - sz * stepDolly * room(camera.track[2].logScale))));
+          camera.swing = { orbit: r4(orbitOut), tilt: r4(tiltOut), diagonal: swingDiagonal ? [sx, sy, sz] : null, die: r4(swingDie), share: r4(swingShare) };
         }
       }
 

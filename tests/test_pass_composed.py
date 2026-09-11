@@ -1426,10 +1426,25 @@ const ROAD_OPENERS = ["Along what the two works share. ", "The radial work turns
         const pitchTied = exp.pitchFrom === exp.pitchTo && exp.pitchFrom !== 0;
         const expPitch = carried === "pitch"
           ? [exp.pitchFrom, pitchTied ? exp.pitchInTied : exp.pitchTo] : [0, 0];
+        // THE SWING'S DIAGONAL RIDES ON THE RECORD'S OWN READING (2026-09-11, pass-composer.js):
+        // where the plan says the die cast a diagonal, the pan and the dolly take half of the
+        // room left under the shared bound (DOLLY_CAP, 0.5) in the corner's own direction on the
+        // first middle point and the opposite on the second. The same arithmetic, applied here to
+        // the re-derived reading, so the row still judges the reading and the swing on top of it.
+        const sw = (p.plan.camera || {}).swing || null;
+        const B = 0.5, room = (v) => 0.5 * (B - Math.min(B, Math.abs(v)));
+        let expPan1 = [exp.panFrom[0], exp.panFrom[1]], expPan2 = [exp.panTo[0], exp.panTo[1]];
+        let expLs1 = exp.logScale, expLs2 = exp.logScale;
+        if (sw && sw.diagonal) {
+          const [sx, sy, sz] = sw.diagonal;
+          expPan1 = [expPan1[0] + sx * room(expPan1[0]), expPan1[1] + sy * room(expPan1[1])];
+          expPan2 = [expPan2[0] - sx * room(expPan2[0]), expPan2[1] - sy * room(expPan2[1])];
+          // the dolly is the record's own reading; the diagonal never touches it
+        }
         const ok = singleExcursion
-          && close(got1.pan.x, exp.panFrom[0]) && close(got1.pan.y, exp.panFrom[1])
-          && close(got2.pan.x, exp.panTo[0]) && close(got2.pan.y, exp.panTo[1])
-          && close(got1.logScale, exp.logScale) && close(got2.logScale, exp.logScale)
+          && close(got1.pan.x, expPan1[0]) && close(got1.pan.y, expPan1[1])
+          && close(got2.pan.x, expPan2[0]) && close(got2.pan.y, expPan2[1])
+          && close(got1.logScale, expLs1) && close(got2.logScale, expLs2)
           && close(got1.roll, expRoll[0]) && close(got2.roll, expRoll[1])
           && close(got1.yaw, expYaw[0]) && close(got2.yaw, expYaw[1])
           && close(got1.pitch, expPitch[0]) && close(got2.pitch, expPitch[1]);

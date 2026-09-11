@@ -127,7 +127,7 @@ check("EX-COVER the composed camera track names six axes always and two more on 
       and "orbit" not in TRACK_TEXT and "tilt" not in TRACK_TEXT
       and "camera.track[1].orbit = flt(r4(orbitOut));" in COMPOSER
       and "camera.track[1].tilt = flt(r4(tiltOut));" in COMPOSER
-      and "var swingAmount = camBound * (0.5 + 0.5 *" in COMPOSER
+      and "var swingAmount = camBound * swingShare * (0.5 + 0.5 *" in COMPOSER
       and "var tiltOut = sy * 0.5 * swingAmount" in COMPOSER,
       "orbit and tilt are named only where the swing casts them (2026-09-11), bounded by the one "
       "bound every axis shares, so they are two more sides of the same box; "

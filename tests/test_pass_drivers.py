@@ -99,7 +99,7 @@ ROWS = [
     "PASS-DRV §6 · a plane is held at an angle across the middle while the dolly flies its own edges",
     "PASS-DRV §6 · an orbit turns the view about the subject where a yaw turns the camera in place",
     "PASS-DRV §6 · a turn is seen through a projection even where the score names no field of view",
-    "PASS-DRV §6 · the lean variant drops the two turning axes and keeps the pan and the dolly",
+    "PASS-DRV §6 · every variant keeps the two turning axes with the pan and the dolly",
     "PASS-DRV §6 · a flight whose orbit does not come back to zero does not rest",
     "PASS-DRV §6 · the two ends of a flight stand exactly on the two hang poses",
     "PASS-DRV §6 · a camera-led flight never rests through the middle and still lands on the hang",
@@ -480,7 +480,7 @@ out.projection = {
 // and every device carries them.
 var lean = bench.camCaps("lean"), std = bench.camCaps("standard");
 out.caps = { lean: lean, standard: std,
-             ok: lean.orbit === false && lean.tilt === false && lean.panX === true
+             ok: lean.orbit === true && lean.tilt === true && lean.panX === true
                  && lean.logScale === true && lean.roll === true
                  && std.orbit === true && std.tilt === true };
 
