@@ -10791,6 +10791,14 @@
           var tiltOut = sy * 0.5 * swingAmount, tiltIn = -sy * 0.25 * swingAmount;
           var stepPan = 0.5 * camBound, stepDolly = 0.5 * camBound;
           var bound = function (v) { return Math.max(-camBound, Math.min(camBound, v)); };
+          // NAMED ON ALL FOUR POINTS. The layer splines each axis over the points that name it
+          // (`camStagePose`, pass-layer.js) and holds the last named value past them: an orbit named
+          // on the two middle points alone never returns to zero, the camera never rests on the
+          // arriving hang, and the rest cadence runs to its deadline again and again — a first walk
+          // with the swing read eleven crossings that never docked. The two ends name the neutral,
+          // exactly as they do for every other axis.
+          camera.track[0].orbit = flt(0); camera.track[3].orbit = flt(0);
+          camera.track[0].tilt = flt(0); camera.track[3].tilt = flt(0);
           camera.track[1].orbit = flt(r4(orbitOut));
           camera.track[2].orbit = flt(r4(orbitIn));
           camera.track[1].tilt = flt(r4(tiltOut));
